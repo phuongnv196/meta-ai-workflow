@@ -1,0 +1,147 @@
+@use 'sass:color';
+@use '../../styles/variables' as *;
+
+.workflow-canvas {
+  flex-grow: 1;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  background-color: #020617;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  .canvas-content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    pointer-events: none;
+
+    &>* {
+      pointer-events: all;
+    }
+  }
+
+  .edges-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 10000px;
+    height: 10000px;
+    pointer-events: none;
+    z-index: 1;
+
+    .edge-group {
+      pointer-events: all;
+      cursor: pointer;
+
+      &:hover {
+        .edge-path {
+          stroke: #ef4444;
+          stroke-width: 3;
+          filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+        }
+      }
+
+      .edge-path {
+        transition: stroke 0.2s ease, stroke-width 0.2s ease;
+      }
+    }
+  }
+
+  .nodes-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .canvas-toolbar {
+    position: absolute;
+    top: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    @include glass;
+    padding: 0.6rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 20;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: $border;
+      margin: 0 0.5rem;
+    }
+
+    button {
+      background: none;
+      border: none;
+      color: $text;
+      padding: 0.6rem;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: all 0.2s;
+
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.08);
+        color: $primary;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &.run-btn {
+        background: $primary;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 15px rgba($primary, 0.3);
+
+        &:hover:not(:disabled) {
+          background: color.adjust($primary, $lightness: 10%);
+          transform: translateY(-1px);
+        }
+
+        &.running {
+          background: $accent;
+        }
+      }
+    }
+  }
+
+  .canvas-controls {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    @include glass;
+    padding: 0.5rem 1.2rem;
+    border-radius: 30px;
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.8rem;
+    color: $text-muted;
+    z-index: 20;
+
+    .control-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+  }
+}

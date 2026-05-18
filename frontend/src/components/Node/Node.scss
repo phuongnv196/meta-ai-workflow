@@ -1,0 +1,243 @@
+@use '../../styles/variables' as *;
+
+.workflow-node {
+  position: absolute;
+  width: 240px;
+  min-height: 100px;
+  @include glass;
+  border-radius: 12px;
+  cursor: grab;
+  user-select: none;
+  pointer-events: all;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  z-index: 5;
+  animation: node-entry 0.3s ease-out;
+  transform-origin: 0 0;
+
+  &.executing {
+    border-color: $primary;
+    box-shadow: 0 0 20px rgba($primary, 0.4);
+    background: rgba(30, 41, 59, 0.9);
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 14px;
+      background: linear-gradient(90deg, transparent, $primary, transparent);
+      background-size: 200% 100%;
+      animation: sweep 1.5s linear infinite;
+      z-index: -1;
+    }
+  }
+
+  &:hover {
+    border-color: rgba($primary, 0.6);
+    background: rgba(30, 41, 59, 0.8);
+  }
+
+  &.dragging {
+    cursor: grabbing;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    border-color: $primary;
+    z-index: 100;
+  }
+
+  .port {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: $primary;
+    border: 2px solid $bg-color;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: crosshair;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    z-index: 10;
+
+    &:hover {
+      transform: translateY(-50%) scale(1.4);
+      box-shadow: 0 0 15px $primary;
+    }
+
+    &.port-in {
+      left: -6px;
+    }
+
+    &.port-out {
+      right: -6px;
+    }
+
+    &.port-active {
+      box-shadow: 0 0 20px $primary;
+      animation: pulse 1.5s infinite;
+    }
+  }
+
+  .node-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid $border;
+    pointer-events: none;
+
+    .node-icon {
+      color: $primary;
+      flex-shrink: 0;
+    }
+
+    .node-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      flex-grow: 1;
+      color: $text;
+    }
+
+    .node-actions {
+      pointer-events: all;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: rgba($text, 0.2);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s;
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+      }
+    }
+  }
+
+  .node-content {
+    padding: 1rem;
+    position: relative;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+
+    .node-custom-ui {
+      width: 100%;
+
+      label {
+        display: block;
+        font-size: 0.7rem;
+        color: rgba($text, 0.4);
+        margin-bottom: 0.4rem;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 60px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid $border;
+        border-radius: 8px;
+        color: $text;
+        padding: 0.6rem;
+        font-size: 0.8rem;
+        resize: vertical;
+        font-family: inherit;
+
+        &:focus {
+          outline: none;
+          border-color: $primary;
+        }
+      }
+
+      &.file-drop {
+        border: 2px dashed $border;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        color: rgba($text, 0.5);
+        transition: all 0.3s;
+
+        &:hover {
+          border-color: $accent;
+          background: rgba($accent, 0.05);
+          color: $text;
+        }
+      }
+
+      &.result-view {
+        margin-top: 0.5rem;
+        border-radius: 8px;
+        overflow: hidden;
+
+        img,
+        video {
+          width: 100%;
+          display: block;
+        }
+      }
+    }
+  }
+
+  .node-footer {
+    padding: 0.5rem 1rem;
+    background: rgba(0, 0, 0, 0.1);
+    font-size: 0.65rem;
+    color: rgba($text, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-top: 1px solid $border;
+    border-radius: 0 0 12px 12px;
+  }
+
+  &.start {
+    .node-icon {
+      color: #10b981;
+    }
+  }
+
+  &.database {
+    .node-icon {
+      color: #f59e0b;
+    }
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: translateY(-50%) scale(1);
+  }
+
+  50% {
+    transform: translateY(-50%) scale(1.3);
+  }
+
+  100% {
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+@keyframes sweep {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes node-entry {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}

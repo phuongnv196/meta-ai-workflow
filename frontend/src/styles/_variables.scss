@@ -1,0 +1,45 @@
+// Variables
+$bg-color: #020617;
+$sidebar-bg: rgba(15, 23, 42, 0.8);
+$canvas-bg: #020617;
+$node-bg: rgba(30, 41, 59, 0.5);
+$primary: #38bdf8;
+$accent: #818cf8;
+$text: #f8fafc;
+$text-muted: #94a3b8;
+$border: rgba(255, 255, 255, 0.1);
+
+// Mixins
+@mixin glass {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Global resets
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: $bg-color;
+  color: $text;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+}

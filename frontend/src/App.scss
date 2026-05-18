@@ -1,0 +1,51 @@
+@use './styles/variables' as *;
+
+.app-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background-color: $bg-color;
+  overflow: hidden;
+}
+
+main {
+  flex-grow: 1;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+// Shared utility — used by both WorkflowCanvas and Node
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Custom Scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
