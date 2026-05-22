@@ -1,0 +1,199 @@
+@use '../../styles/variables' as *;
+
+.workflow-list-page {
+  width: 100vw;
+  height: 100vh;
+  background: $bg-color;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.wlp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid $border;
+
+  .wlp-header-left {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $text;
+    }
+
+    .wlp-count {
+      font-size: 0.85rem;
+      color: $text-muted;
+    }
+  }
+
+  .wlp-new-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
+    border: none;
+    background: $primary;
+    color: #020617;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: lighten($primary, 8%);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.wlp-filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+
+  .wlp-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    max-width: 400px;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: rgba(255, 255, 255, 0.03);
+    color: $text-muted;
+
+    input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: $text;
+      font-size: 0.9rem;
+      outline: none;
+
+      &::placeholder {
+        color: $text-muted;
+      }
+    }
+  }
+
+  .wlp-sort {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    select {
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid $border;
+      background: rgba(255, 255, 255, 0.03);
+      color: $text;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+
+      option {
+        background: #1e293b;
+        color: $text;
+      }
+    }
+
+    .wlp-sort-order {
+      @include flex-center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid $border;
+      background: rgba(255, 255, 255, 0.03);
+      color: $text-muted;
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: $text;
+      }
+    }
+  }
+}
+
+.wlp-content {
+  flex: 1;
+  padding: 0 2rem 2rem;
+}
+
+.wlp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.2rem;
+}
+
+.wlp-loading,
+.wlp-error,
+.wlp-empty {
+  @include flex-center;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 4rem 0;
+  color: $text-muted;
+  font-size: 1rem;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: rgba(255, 255, 255, 0.05);
+    color: $primary;
+    cursor: pointer;
+    font-size: 0.9rem;
+
+    &:hover {
+      background: rgba(56, 189, 248, 0.1);
+    }
+  }
+}
+
+.wlp-error {
+  color: #f87171;
+}
+
+.wlp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  border-top: 1px solid $border;
+  color: $text-muted;
+  font-size: 0.85rem;
+
+  button {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid $border;
+    background: rgba(255, 255, 255, 0.05);
+    color: $text;
+    cursor: pointer;
+    font-size: 0.85rem;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}

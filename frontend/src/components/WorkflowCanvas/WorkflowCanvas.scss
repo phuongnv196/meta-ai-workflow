@@ -75,6 +75,17 @@
     z-index: 20;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 
+    .toolbar-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: $text-muted;
+      max-width: 160px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 0.3rem;
+    }
+
     .divider {
       width: 1px;
       height: 24px;
@@ -102,6 +113,16 @@
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+      }
+
+      &.back-btn {
+        color: $text-muted;
+        padding: 0.6rem;
+
+        &:hover {
+          color: $text;
+          background: rgba(255, 255, 255, 0.08);
+        }
       }
 
       &.run-btn {

@@ -1,11 +1,11 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import useWorkflowStore from '../../store/useWorkflowStore';
 import Node from '../Node/Node';
-import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward } from 'lucide-react';
+import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward, Save, SaveAll, ArrowLeft } from 'lucide-react';
 import './WorkflowCanvas.scss';
 
-const WorkflowCanvas = () => {
-  const { nodes, edges, activeConnection, setActiveConnection, addNode, removeEdge, isRunning, runWorkflow, runStep } = useWorkflowStore();
+const WorkflowCanvas = ({ onSave, onBack }) => {
+  const { nodes, edges, activeConnection, setActiveConnection, addNode, removeEdge, isRunning, runWorkflow, runStep, workflowId, workflowName, isDirty, isSaving } = useWorkflowStore();
   const canvasRef = useRef(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
@@ -111,6 +111,18 @@ const WorkflowCanvas = () => {
     };
   };
 
+  useEffect(() => {
+    if (!onSave) return;
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        onSave(e.shiftKey ? 'saveAs' : 'save');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onSave]);
+
   const handleZoom = (delta) => {
     setTransform(prev => ({ ...prev, scale: Math.max(0.2, Math.min(3, prev.scale * delta)) }));
   };
@@ -195,6 +207,12 @@ const WorkflowCanvas = () => {
       </div>
 
       <div className="canvas-toolbar">
+        {onBack && (
+          <button className="back-btn" onClick={onBack} title="Back to Workflows">
+            <ArrowLeft size={18} />
+          </button>
+        )}
+        {workflowName && <span className="toolbar-name">{workflowName}{isDirty ? ' •' : ''}</span>}
         <button className={`run-btn ${isRunning ? 'running' : ''}`} onClick={runWorkflow} disabled={isRunning}>
           {isRunning ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
           <span>{isRunning ? 'Running Flow...' : 'Run Workflow'}</span>
@@ -224,6 +242,17 @@ const WorkflowCanvas = () => {
         <button onClick={() => handleZoom(1.1)} title="Zoom In"><ZoomIn size={18} /></button>
         <button onClick={() => handleZoom(0.9)} title="Zoom Out"><ZoomOut size={18} /></button>
         <button onClick={handleReset} title="Reset View"><RotateCcw size={18} /></button>
+        {onSave && (
+          <>
+            <div className="divider" />
+            <button onClick={() => onSave('save')} disabled={isSaving} title="Save (Ctrl+S)">
+              <Save size={18} />
+            </button>
+            <button onClick={() => onSave('saveAs')} disabled={isSaving} title="Save As (Ctrl+Shift+S)">
+              <SaveAll size={18} />
+            </button>
+          </>
+        )}
       </div>
 
       <div className="canvas-controls">

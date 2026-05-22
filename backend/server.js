@@ -7,6 +7,7 @@ const { errorHandler } = require('./middleware/error-handler');
 
 const uploadRoutes = require('./routes/upload.routes');
 const executeRoutes = require('./routes/execute.routes');
+const workflowRoutes = require('./routes/workflow-management.routes');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.get('/health', (_req, res) => {
 // Routes
 app.use('/upload', uploadRoutes);
 app.use('/execute', executeRoutes);
+app.use('/workflows', workflowRoutes);
 
 // Global error handler (must be last)
 app.use(errorHandler);

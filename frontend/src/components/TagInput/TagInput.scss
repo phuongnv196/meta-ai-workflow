@@ -1,0 +1,63 @@
+@use '../../styles/variables' as *;
+
+.tag-input {
+  .tag-input-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: rgba(255, 255, 255, 0.03);
+    min-height: 38px;
+    align-items: center;
+
+    &:focus-within {
+      border-color: $primary;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+    }
+  }
+
+  .tag-input-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    background: rgba(56, 189, 248, 0.1);
+    color: $primary;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+
+    button {
+      @include flex-center;
+      width: 16px;
+      height: 16px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: $primary;
+      cursor: pointer;
+      padding: 0;
+
+      &:hover {
+        background: rgba(56, 189, 248, 0.2);
+      }
+    }
+  }
+
+  input {
+    flex: 1;
+    min-width: 80px;
+    border: none;
+    background: transparent;
+    color: $text;
+    font-size: 0.85rem;
+    outline: none;
+    padding: 0.2rem 0;
+
+    &::placeholder {
+      color: rgba(148, 163, 184, 0.5);
+    }
+  }
+}

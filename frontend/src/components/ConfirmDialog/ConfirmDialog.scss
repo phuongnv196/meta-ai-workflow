@@ -1,0 +1,72 @@
+@use '../../styles/variables' as *;
+
+.confirm-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  @include flex-center;
+  z-index: 1000;
+}
+
+.confirm-dialog {
+  @include glass;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 400px;
+  padding: 1.5rem;
+
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: $text;
+    margin-bottom: 0.6rem;
+  }
+
+  p {
+    font-size: 0.9rem;
+    color: $text-muted;
+    line-height: 1.5;
+    margin-bottom: 1.2rem;
+  }
+}
+
+.cd-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+
+  .cd-cancel {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: transparent;
+    color: $text-muted;
+    cursor: pointer;
+    font-size: 0.9rem;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: $text;
+    }
+  }
+
+  .cd-confirm {
+    padding: 0.5rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    background: #ef4444;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #dc2626;
+    }
+  }
+}

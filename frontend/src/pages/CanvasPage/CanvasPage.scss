@@ -1,0 +1,29 @@
+@use '../../styles/variables' as *;
+
+.canvas-page-error {
+  @include flex-center;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100vw;
+  height: 100vh;
+  background: $bg-color;
+  color: $text-muted;
+
+  p {
+    font-size: 1.1rem;
+  }
+
+  button {
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: rgba(255, 255, 255, 0.05);
+    color: $primary;
+    cursor: pointer;
+    font-size: 0.9rem;
+
+    &:hover {
+      background: rgba(56, 189, 248, 0.1);
+    }
+  }
+}

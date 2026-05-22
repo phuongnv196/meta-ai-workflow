@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { REFERENCE_NODE_TYPES } from '../constants';
 import { executeViaSSE } from '../utils/sse-client';
+import { workflowApi } from '../api/workflow-api';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -73,6 +74,14 @@ const useWorkflowStore = create((set, get) => ({
   executingNodeId: null,
   logs: [],
 
+  // Workflow management
+  workflowId: null,
+  workflowName: '',
+  workflowDescription: '',
+  workflowTags: [],
+  isSaving: false,
+  isDirty: false,
+
   setActiveConnection: (connection) => set({ activeConnection: connection }),
 
   addNode: (node) => set((state) => {
@@ -90,15 +99,17 @@ const useWorkflowStore = create((set, get) => ({
         refName: `reference_${String(maxNum + 1).padStart(2, '0')}`,
       };
     }
-    return { nodes: [...state.nodes, updatedNode] };
+    return { nodes: [...state.nodes, updatedNode], isDirty: true };
   }),
 
   updateNodePosition: (id, position) => set((state) => ({
     nodes: state.nodes.map((n) => n.id === id ? { ...n, position } : n),
+    isDirty: true,
   })),
 
   updateNodeData: (id, data) => set((state) => ({
     nodes: state.nodes.map((n) => n.id === id ? { ...n, data: { ...n.data, ...data } } : n),
+    isDirty: true,
   })),
 
   updateNodeDimensions: (id, dimensions) => set((state) => ({
@@ -108,15 +119,18 @@ const useWorkflowStore = create((set, get) => ({
   addEdge: (edge) => set((state) => ({
     edges: [...state.edges, { ...edge, id: `e${edge.source}-${edge.target}` }],
     activeConnection: null,
+    isDirty: true,
   })),
 
   removeNode: (id) => set((state) => ({
     nodes: state.nodes.filter((n) => n.id !== id),
     edges: state.edges.filter((e) => e.source !== id && e.target !== id),
+    isDirty: true,
   })),
 
   removeEdge: (id) => set((state) => ({
     edges: state.edges.filter((e) => e.id !== id),
+    isDirty: true,
   })),
 
   setExecutingNode: (id) => set({ executingNodeId: id }),
@@ -192,6 +206,92 @@ const useWorkflowStore = create((set, get) => ({
       set({ executingNodeId: null, isRunning: false });
     }
   },
+
+  // ── Workflow Management ─────────────────────────────────────────────
+
+  loadWorkflow: async (id) => {
+    try {
+      const workflow = await workflowApi.getById(id);
+      set({
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        workflowDescription: workflow.description || '',
+        workflowTags: workflow.tags || [],
+        nodes: workflow.nodes || [],
+        edges: workflow.edges || [],
+        isDirty: false,
+        logs: [],
+        executingNodeId: null,
+        isRunning: false,
+      });
+      return workflow;
+    } catch (error) {
+      console.error('Failed to load workflow:', error);
+      throw error;
+    }
+  },
+
+  saveWorkflow: async (thumbnail) => {
+    const { workflowId, workflowName, workflowDescription, workflowTags, nodes, edges } = get();
+    set({ isSaving: true });
+
+    try {
+      const payload = { name: workflowName, description: workflowDescription, tags: workflowTags, thumbnail, nodes, edges };
+      let workflow;
+      if (workflowId) {
+        workflow = await workflowApi.update(workflowId, payload);
+      } else {
+        workflow = await workflowApi.create(payload);
+        set({ workflowId: workflow.id });
+      }
+      set({ isDirty: false, isSaving: false });
+      return workflow;
+    } catch (error) {
+      set({ isSaving: false });
+      throw error;
+    }
+  },
+
+  saveWorkflowAs: async ({ name, description, tags, thumbnail }) => {
+    const { nodes, edges } = get();
+    set({ isSaving: true });
+
+    try {
+      const workflow = await workflowApi.create({ name, description, tags, thumbnail, nodes, edges });
+      set({
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        workflowDescription: workflow.description || '',
+        workflowTags: workflow.tags || [],
+        isDirty: false,
+        isSaving: false,
+      });
+      return workflow;
+    } catch (error) {
+      set({ isSaving: false });
+      throw error;
+    }
+  },
+
+  resetWorkflow: () => set({
+    workflowId: null,
+    workflowName: '',
+    workflowDescription: '',
+    workflowTags: [],
+    nodes: [],
+    edges: [],
+    isDirty: false,
+    logs: [],
+    executingNodeId: null,
+    isRunning: false,
+  }),
+
+  setWorkflowMeta: (meta) => set((state) => ({
+    workflowName: meta.name !== undefined ? meta.name : state.workflowName,
+    workflowDescription: meta.description !== undefined ? meta.description : state.workflowDescription,
+    workflowTags: meta.tags !== undefined ? meta.tags : state.workflowTags,
+    isDirty: true,
+  })),
 }));
 
 export default useWorkflowStore;
