@@ -15,6 +15,14 @@ const handlers = {
   meta_track:     require('./meta-track.handler'),
   extract_frame:  require('./extract-frame.handler'),
   merge_videos:   require('./merge-videos.handler'),
+  // Vibes AI nodes
+  vibes_upload_image:      require('./vibes-upload-image.handler'),
+  vibes_upload_audio:      require('./vibes-upload-audio.handler'),
+  vibes_generate_prompts:  require('./vibes-generate-prompts.handler'),
+  vibes_generate_images:   require('./vibes-generate-images.handler'),
+  vibes_generate_videos:   require('./vibes-generate-videos.handler'),
+  vibes_tts:               require('./vibes-tts.handler'),
+  vibes_animate:           require('./vibes-animate.handler'),
 };
 
 function getHandler(nodeType) {

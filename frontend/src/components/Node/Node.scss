@@ -93,10 +93,15 @@
       font-weight: 600;
       flex-grow: 1;
       color: $text;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0; // Bắt buộc phải có để flex child có thể cắt chữ
     }
 
     .node-actions {
       pointer-events: all;
+      white-space: nowrap;
     }
 
     .delete-btn {

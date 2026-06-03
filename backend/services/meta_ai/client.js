@@ -30,7 +30,7 @@ class MetaAIClient {
    * @param {string}   options.promptText      - Nội dung prompt
    * @param {string}   [options.conversationId] - ID hội thoại cũ (nếu có)
    * @param {Function} [options.onChunk]       - Callback tùy chỉnh cho mỗi chunk nhận được
-   * @returns {Promise<{requestId: string|null, mediaId: string|null, videoFbid: string|null, videoUrl: string|null, conversationId: string}>}
+   * @returns {Promise<{requestId: string|null, mediaId: string|null, videoFbid: string|null, videoUrl: string|null, conversationId: string, text: string}>}
    */
   chat(options = {}) {
     const {
@@ -252,12 +252,23 @@ class MetaAIClient {
           const isRealVideo = !!state.videoFbid && state.isVideoUrlResolved;
           const hasFinishedResult = isVideoRequest ? isRealVideo : !!state.videoUrl;
 
+          // For text-only requests (no attachments, not expecting video), close after receiving text
+          const isTextOnlyRequest = !expectVideo && inputMediaIds.length === 0 && !state.videoFbid;
+          const hasTextResponse = state.accumulatedText && state.accumulatedText.length > 10;
+
           if (hasFinishedResult) {
             if (inactivityTimer) clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(() => {
               console.log('\n[Client] Đã nhận đủ CDN URL & im lặng 2s. Resolve sớm...');
               ws.close();
             }, 2000);
+          } else if (isTextOnlyRequest && hasTextResponse) {
+            // For text-only requests, close after 3 seconds of receiving text
+            if (inactivityTimer) clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+              console.log('\n[Client] Đã nhận text response cho text-only request. Đóng kết nối...');
+              ws.close();
+            }, 3000);
           }
 
           // Nếu có callback tùy chỉnh thì dùng, ngược lại dùng default renderer
@@ -333,10 +344,10 @@ class MetaAIClient {
         }
         
         // Nếu không có lỗi định nghĩa trước, nhưng cũng không lấy được mediaUrl
-        if (!state.videoUrl && !state.error) {
+        if (!state.videoUrl && !state.error && !state.accumulatedText) {
           state.error = "Không nhận được hình ảnh/video từ Meta AI. Mô hình có thể đã từ chối yêu cầu hoặc chỉ trả về văn bản.";
         }
-        
+
         resolve(state);
       });
 

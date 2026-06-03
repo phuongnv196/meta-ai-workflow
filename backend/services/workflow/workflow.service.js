@@ -1,6 +1,7 @@
 'use strict';
 
 const { MetaAIClient } = require('../meta_ai');
+const VibeAI = require('../vibe_ai/client');
 const { topologicalSort } = require('./topological-sort');
 const { getHandler } = require('./node-handlers');
 const { log } = require('../../utils/logger');
@@ -13,6 +14,13 @@ const REFERENCE_NODE_TYPES = [
   'meta_track',
   'extract_frame',
   'merge_videos',
+  // Vibes AI nodes that produce referenceable output
+  'vibes_upload_image',
+  'vibes_upload_audio',
+  'vibes_generate_images',
+  'vibes_generate_videos',
+  'vibes_tts',
+  'vibes_animate',
 ];
 
 /**
@@ -70,6 +78,7 @@ function preloadResults(nodes) {
       videoUrl,
       generatedImageUrl,
       attachments,
+      mediaEntId: n.data.mediaEntId || null,
     };
   });
 
@@ -90,6 +99,7 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
   sendEvent('workflow_started', { totalNodes: targetNodeId ? 1 : nodes.length });
 
   const client = new MetaAIClient();
+  const vibeClient = VibeAI();
   const globalRefMap = buildGlobalRefMap(nodes);
   const results = preloadResults(nodes);
   const executionOrder = targetNodeId ? [targetNodeId] : topologicalSort(nodes, edges);
@@ -122,6 +132,7 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
     // Build execution context for handlers
     const context = {
       client,
+      vibeClient,
       nodes,
       edges,
       incomingEdges,

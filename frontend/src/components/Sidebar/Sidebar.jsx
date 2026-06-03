@@ -13,7 +13,14 @@ import {
   Search,
   Music,
   Crop,
-  Film
+  Film,
+  Upload,
+  Mic,
+  Wand2,
+  Layers,
+  Clapperboard,
+  Speaker,
+  PersonStanding
 } from 'lucide-react';
 import './Sidebar.scss';
 
@@ -24,10 +31,15 @@ const Sidebar = () => {
     {
       name: 'Meta AI Core',
       items: [
-        { type: 'meta_chat', icon: <MessageSquare size={18} />, label: 'Meta AI Chat', color: '#38bdf8' },
-        { type: 'meta_imagine', icon: <ImageIcon size={18} />, label: 'Imagine (Image)', color: '#10b981' },
-        { type: 'meta_video_gen', icon: <Video size={18} />, label: 'Imagine (Video)', color: '#a855f7' },
-        // { type: 'meta_video', icon: <Video size={18} />, label: 'Extend Video', color: '#f59e0b' },
+        { type: 'meta_chat', icon: <MessageSquare size={18} />, label: 'Meta Chat', color: '#38bdf8' },
+        { type: 'meta_imagine', icon: <ImageIcon size={18} />, label: 'Meta Imagine (Image)', color: '#10b981' },
+        { type: 'meta_video_gen', icon: <Video size={18} />, label: 'Meta Imagine (Video)', color: '#a855f7' },
+        { type: 'file_input', icon: <Upload size={18} />, label: 'Meta Upload Image', color: '#38bdf8' },
+      ]
+    },
+    {
+      name: 'Utilities',
+      items: [
         { type: 'extract_frame', icon: <Crop size={18} />, label: 'Extract Frame', color: '#06b6d4' },
         { type: 'merge_videos', icon: <Film size={18} />, label: 'Merge Videos', color: '#84cc16' },
         { type: 'meta_track', icon: <Music size={18} />, label: 'Track Resolver', color: '#ec4899' },
@@ -37,7 +49,18 @@ const Sidebar = () => {
       name: 'Inputs & Data',
       items: [
         { type: 'text_input', icon: <FileText size={18} />, label: 'Text Prompt', color: '#818cf8' },
-        { type: 'file_input', icon: <Zap size={18} />, label: 'Attachments', color: '#ec4899' },
+        
+      ]
+    },
+    {
+      name: 'Vibes AI',
+      items: [
+        { type: 'vibes_upload_image',     icon: <Upload size={18} />,         label: 'Vibes Upload Image',      color: '#38bdf8' },
+        { type: 'vibes_upload_audio',     icon: <Mic size={18} />,            label: 'Vibes Upload Audio',      color: '#f472b6' },
+        { type: 'vibes_generate_prompts', icon: <Wand2 size={18} />,          label: 'Vibes Enhance Prompt',    color: '#a78bfa' },
+        { type: 'vibes_generate_images',  icon: <Layers size={18} />,         label: 'Vibes Generate Images',   color: '#34d399' },
+        { type: 'vibes_generate_videos',  icon: <Clapperboard size={18} />,   label: 'Vibes Generate Videos',   color: '#fb923c' },
+        { type: 'vibes_animate',          icon: <PersonStanding size={18} />, label: 'Vibes Animate (Lip-sync)', color: '#f87171' },
       ]
     },
     {
@@ -49,8 +72,9 @@ const Sidebar = () => {
     }
   ];
 
-  const onDragStart = (e, type) => {
+  const onDragStart = (e, type, label) => {
     e.dataTransfer.setData('application/node-type', type);
+    e.dataTransfer.setData('application/node-label', label);
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -84,7 +108,7 @@ const Sidebar = () => {
                   key={item.type}
                   className="palette-item"
                   draggable
-                  onDragStart={(e) => onDragStart(e, item.type)}
+                  onDragStart={(e) => onDragStart(e, item.type, item.label)}
                   onClick={() => handleAddNode(item.type, item.label)}
                 >
                   <div className="palette-icon" style={{ color: item.color }}>{item.icon}</div>

@@ -19,6 +19,7 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
   const onDrop = useCallback((e) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('application/node-type');
+    const label = e.dataTransfer.getData('application/node-label');
     if (!type) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
@@ -32,7 +33,7 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
       id,
       type,
       position,
-      data: { label: `${type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` },
+      data: { label: label || `${type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` },
     });
   }, [addNode, transform]);
 
@@ -86,22 +87,10 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
 
-    const nodeEl = document.getElementById(nodeId);
-    if (nodeEl) {
-      const portEl = nodeEl.querySelector(type === 'out' ? '.port-out' : '.port-in');
-      if (portEl) {
-        const rect = portEl.getBoundingClientRect();
-        const canvasEl = canvasRef.current;
-        if (canvasEl) {
-          const canvasRect = canvasEl.getBoundingClientRect();
-          return {
-            x: (rect.left + rect.width / 2 - canvasRect.left - transform.x) / transform.scale,
-            y: (rect.top + rect.height / 2 - canvasRect.top - transform.y) / transform.scale
-          };
-        }
-      }
-    }
-
+    // Use world-space coordinates only.
+    // node.dimensions stores offsetWidth/offsetHeight (CSS layout pixels = world pixels),
+    // and node.position is in world coordinates — so this is always correct regardless
+    // of zoom level or node resize, and never reads stale DOM during render.
     const nodeWidth = node.dimensions?.width || 220;
     const nodeHeight = node.dimensions?.height || 150;
 
