@@ -5,6 +5,7 @@ import WorkflowCanvas from '../../components/WorkflowCanvas/WorkflowCanvas';
 import Console from '../../components/Console/Console';
 import SaveWorkflowDialog from '../../components/SaveWorkflowDialog/SaveWorkflowDialog';
 import useWorkflowStore from '../../store/useWorkflowStore';
+import { PanelLeftClose, PanelLeftOpen, TerminalSquare } from 'lucide-react';
 import './CanvasPage.scss';
 
 const CanvasPage = () => {
@@ -15,6 +16,8 @@ const CanvasPage = () => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveMode, setSaveMode] = useState('save');
   const [loadError, setLoadError] = useState(null);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [showConsole, setShowConsole] = useState(true);
 
   useEffect(() => {
     if (id) {
@@ -46,10 +49,55 @@ const CanvasPage = () => {
 
   return (
     <div className="app-container">
-      <Sidebar />
-      <main>
+      {showSidebar && <Sidebar />}
+      <main style={{ position: 'relative' }}>
         <WorkflowCanvas onSave={handleOpenSave} onBack={handleBack} />
-        <Console />
+        {showConsole && <Console />}
+        
+        {/* Floating Panel Toggles */}
+        <div style={{ position: 'absolute', bottom: showConsole ? '220px' : '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 50, transition: 'bottom 0.3s' }}>
+          <button 
+            onClick={() => setShowSidebar(!showSidebar)}
+            style={{
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              padding: '8px',
+              color: showSidebar ? '#38bdf8' : '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              transition: 'all 0.2s'
+            }}
+            title={showSidebar ? 'Hide Sidebar' : 'Show Sidebar'}
+          >
+            {showSidebar ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+          </button>
+
+          <button 
+            onClick={() => setShowConsole(!showConsole)}
+            style={{
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              padding: '8px',
+              color: showConsole ? '#38bdf8' : '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              transition: 'all 0.2s'
+            }}
+            title={showConsole ? 'Hide Console' : 'Show Console'}
+          >
+            <TerminalSquare size={20} />
+          </button>
+        </div>
       </main>
       {showSaveDialog && (
         <SaveWorkflowDialog
