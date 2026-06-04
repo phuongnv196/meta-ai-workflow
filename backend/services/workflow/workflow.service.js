@@ -211,6 +211,7 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
           result = await handler.handle(node, inputs, context);
         } catch (error) {
           log(`  Error in node ${nodeId} (${node.type}): ${error.message}`);
+          sendEvent('node_failed', { nodeId, label: node.data.label, type: node.type, error: error.message });
           throw error; // Rethrow to halt downstream dependent nodes
         }
       } else {
@@ -228,12 +229,11 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
   try {
     await Promise.all(Object.values(executionPromises));
     log('Workflow execution completed successfully.');
+    sendEvent('workflow_completed', { results });
   } catch (error) {
     log(`Workflow execution failed: ${error.message}`);
-    // Optionally notify frontend of workflow failure here if needed
+    sendEvent('workflow_failed', { error: error.message });
   }
-
-  sendEvent('workflow_completed', { results });
 
   return results;
 }

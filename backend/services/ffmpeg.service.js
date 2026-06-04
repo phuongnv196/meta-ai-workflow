@@ -27,6 +27,36 @@ function getVideoDuration(videoUrl) {
   }
 }
 
+function hasAudio(videoPath) {
+  try {
+    const output = execFileSync('ffprobe', [
+      '-v', 'error',
+      '-select_streams', 'a',
+      '-show_entries', 'stream=codec_name',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      videoPath,
+    ], { encoding: 'utf-8', timeout: 30000 });
+
+    return output.trim().length > 0;
+  } catch (err) {
+    log(`FFprobe audio detection failed: ${err.message}`);
+    return false;
+  }
+}
+
+function addSilentAudio(inputPath, outputPath) {
+  execFileSync('ffmpeg', [
+    '-y',
+    '-i', inputPath,
+    '-f', 'lavfi',
+    '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+    '-c:v', 'copy',
+    '-c:a', 'aac',
+    '-shortest',
+    outputPath,
+  ], { timeout: 120000 });
+}
+
 function extractFrame(videoUrl, seekTime, outputPath) {
   execFileSync('ffmpeg', [
     '-y',
@@ -44,9 +74,12 @@ function concatVideos(concatFilePath, outputPath) {
     '-f', 'concat',
     '-safe', '0',
     '-i', concatFilePath,
-    '-c', 'copy',
+    '-c:v', 'copy',
+    '-c:a', 'aac',
+    '-ac', '2',
+    '-ar', '44100',
     outputPath,
   ], { timeout: 120000 });
 }
 
-module.exports = { getVideoDuration, extractFrame, concatVideos };
+module.exports = { getVideoDuration, extractFrame, concatVideos, hasAudio, addSilentAudio };

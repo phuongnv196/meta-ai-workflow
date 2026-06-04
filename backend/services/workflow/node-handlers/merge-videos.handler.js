@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const { downloadFile } = require('../../meta_ai/uploader');
-const { concatVideos } = require('../../ffmpeg.service');
+const { concatVideos, hasAudio, addSilentAudio } = require('../../ffmpeg.service');
 const { createTempPath, cleanupFile, cleanupFiles, ensureTempDir } = require('../../temp-file.service');
 const config = require('../../../config/env');
 
@@ -29,18 +29,29 @@ async function handle(node, _inputs, context) {
 
   ensureTempDir();
   const localFiles = [];
+  const tempFilesToClean = [];
   let concatTxtPath = null;
   const { filename: outputFilename, filePath: outputFilePath } = createTempPath('merged', '.mp4');
 
   try {
-    // Step 1: Download all CDN videos locally
+    // Step 1: Download all CDN videos locally and normalize audio
     for (let i = 0; i < videoInputs.length; i++) {
       const video = videoInputs[i];
       const { filePath: tempFilePath } = createTempPath(`input_${i}`, '.mp4');
+      tempFilesToClean.push(tempFilePath);
 
       log(`  Downloading video segment ${i + 1}/${videoInputs.length}: ${video.data.videoUrl}`);
       await downloadFile(video.data.videoUrl, tempFilePath);
-      localFiles.push(tempFilePath);
+
+      if (!hasAudio(tempFilePath)) {
+        log(`    -> No audio detected in segment ${i + 1}. Adding silent audio track...`);
+        const { filePath: withAudioPath } = createTempPath(`input_${i}_audio`, '.mp4');
+        tempFilesToClean.push(withAudioPath);
+        addSilentAudio(tempFilePath, withAudioPath);
+        localFiles.push(withAudioPath);
+      } else {
+        localFiles.push(tempFilePath);
+      }
     }
 
     // Step 2: Create FFmpeg concat listing
@@ -60,7 +71,7 @@ async function handle(node, _inputs, context) {
     log(`  FFmpeg merge completed successfully.`);
   } finally {
     cleanupFile(concatTxtPath, { info: log, warn: log });
-    cleanupFiles(localFiles, { info: log, warn: log });
+    cleanupFiles(tempFilesToClean, { info: log, warn: log });
     log(`  Cleaned up temporary input files successfully.`);
   }
 

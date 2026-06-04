@@ -547,7 +547,7 @@ const Node = ({ node, transform }) => {
                 </>
               ) : previewUrl ? (
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                  <img src={previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '120px', objectFit: 'cover' }} />
+                  <img src={previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '500px', objectFit: 'cover' }} />
                   <span style={{ fontSize: '0.65rem', color: '#10b981', wordBreak: 'break-all' }}>Attached: {node.data.filename}</span>
                 </div>
               ) : (
@@ -583,7 +583,7 @@ const Node = ({ node, transform }) => {
             >
               {node.data.previewUrl ? (
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                  <img src={node.data.previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '120px', objectFit: 'cover' }} />
+                  <img src={node.data.previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '500px', objectFit: 'cover' }} />
                   <span style={{ fontSize: '0.65rem', color: '#38bdf8', wordBreak: 'break-all' }}>Attached: {node.data.fileName}</span>
                 </div>
               ) : (
@@ -1112,7 +1112,6 @@ const Node = ({ node, transform }) => {
         
         {(resultUrl || (node.type === 'meta_chat' && node.data.text)) && (
             <div className="node-custom-ui result-view" onMouseDown={e => e.stopPropagation()}>
-                <label>Output Result</label>
                 {node.type === 'meta_chat' && node.data.text ? (
                     <div style={{
                         padding: '12px',
@@ -1133,9 +1132,26 @@ const Node = ({ node, transform }) => {
                             color: '#e2e8f0',
                             lineHeight: '1.5',
                             whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word'
-                        }}>
-                            {node.data.text}
+                            wordBreak: 'break-word',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            maxHeight: '100px'
+                        }}
+                        title={node.data.text}
+                        >
+                            <textarea
+                                value={node.data.text}
+                                readOnly
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#e2e8f0',
+                                    fontSize: '0.85rem',
+                                    maxHeight: '100px'
+                                }}
+                            />
                         </div>
                     </div>
                 ) : node.type === 'meta_track' ? (
@@ -1184,7 +1200,7 @@ const Node = ({ node, transform }) => {
                         loop 
                         muted 
                         playsInline
-                        style={{ width: '100%', borderRadius: '6px', background: '#000', maxHeight: '160px', display: 'block', objectFit: 'cover' }} 
+                        style={{ width: '100%', borderRadius: '6px', background: '#000', display: 'block', objectFit: 'cover' }} 
                     />
                 ) : resultUrl.startsWith('fbid://') ? (
                     <div style={{ 
