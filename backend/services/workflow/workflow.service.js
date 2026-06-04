@@ -56,7 +56,10 @@ function preloadResults(nodes) {
   nodes.forEach(n => {
     if (!n.data) return;
 
-    let promptText = n.data.prompt || n.data.promptText || '';
+    // For meta_chat nodes, promptText is the AI response (not the user's input prompt)
+    let promptText = n.type === 'meta_chat'
+      ? (n.data.text || n.data.promptText || '')
+      : (n.data.prompt || n.data.promptText || '');
     let attachments = n.data.attachments || [];
     let videoUrl = n.data.resultUrl || n.data.videoUrl || '';
     let generatedImageUrl = n.data.generatedImageUrl || n.data.resultUrl || '';
@@ -86,6 +89,24 @@ function preloadResults(nodes) {
 }
 
 /**
+ * Collects all ancestor node IDs for a given target node by traversing edges backwards.
+ */
+function getAncestors(targetNodeId, edges) {
+  const ancestors = new Set();
+  const queue = [targetNodeId];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    edges.forEach(e => {
+      if (e.target === current && !ancestors.has(e.source)) {
+        ancestors.add(e.source);
+        queue.push(e.source);
+      }
+    });
+  }
+  return ancestors;
+}
+
+/**
  * Executes a workflow graph, streaming progress via SSE sendEvent callback.
  *
  * @param {Object} params
@@ -102,7 +123,32 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
   const vibeClient = VibeAI();
   const globalRefMap = buildGlobalRefMap(nodes);
   const results = preloadResults(nodes);
-  const executionOrder = targetNodeId ? [targetNodeId] : topologicalSort(nodes, edges);
+  // When running a single node, also execute all upstream ancestors in topological order
+  // so that their results (e.g. promptText from Meta Chat) are fresh
+  let executionOrder;
+  if (targetNodeId) {
+    const fullOrder = topologicalSort(nodes, edges);
+    const ancestors = getAncestors(targetNodeId, edges);
+    ancestors.add(targetNodeId);
+    executionOrder = fullOrder.filter(id => ancestors.has(id));
+  } else {
+    executionOrder = topologicalSort(nodes, edges);
+  }
+
+  // Resolve Vibes project once for the entire workflow
+  let sharedProjectId = null;
+  const hasVibesNode = nodes.some(n => n.type && n.type.startsWith('vibes_'));
+  if (hasVibesNode) {
+    try {
+      const projData = await vibeClient.getListProject(1);
+      if (projData?.projects?.[0]?.id) {
+        sharedProjectId = projData.projects[0].id;
+        log(`Using shared Vibes project: ${sharedProjectId}`);
+      }
+    } catch (e) {
+      log(`Warning: could not resolve Vibes project: ${e.message}`);
+    }
+  }
 
   for (const nodeId of executionOrder) {
     const node = nodes.find(n => n.id === nodeId);
@@ -138,6 +184,7 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
       incomingEdges,
       results,
       globalRefMap,
+      projectId: sharedProjectId,
       log,
     };
 

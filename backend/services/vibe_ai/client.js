@@ -379,7 +379,9 @@ const VibeAI = () => {
             body: JSON.stringify(payload)
         });
         if (!response.ok) {
-            throw new Error(`generatePrompts failed with status: ${response.status} ${response.statusText}`);
+            let errorText = '';
+            try { errorText = await response.text(); } catch(e) {}
+            throw new Error(`generatePrompts failed with status: ${response.status} ${response.statusText} - ${errorText}`);
         }
         return response.json();
     };

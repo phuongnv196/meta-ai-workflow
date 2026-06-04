@@ -57,7 +57,6 @@ const Sidebar = () => {
       items: [
         { type: 'vibes_upload_image',     icon: <Upload size={18} />,         label: 'Vibes Upload Image',      color: '#38bdf8' },
         { type: 'vibes_upload_audio',     icon: <Mic size={18} />,            label: 'Vibes Upload Audio',      color: '#f472b6' },
-        { type: 'vibes_generate_prompts', icon: <Wand2 size={18} />,          label: 'Vibes Enhance Prompt',    color: '#a78bfa' },
         { type: 'vibes_generate_images',  icon: <Layers size={18} />,         label: 'Vibes Generate Images',   color: '#34d399' },
         { type: 'vibes_generate_videos',  icon: <Clapperboard size={18} />,   label: 'Vibes Generate Videos',   color: '#fb923c' },
         { type: 'vibes_animate',          icon: <PersonStanding size={18} />, label: 'Vibes Animate (Lip-sync)', color: '#f87171' },

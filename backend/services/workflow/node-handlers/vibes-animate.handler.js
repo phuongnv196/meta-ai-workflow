@@ -1,9 +1,12 @@
 'use strict';
 
 const { pollBatch } = require('./vibes-poll-batch');
+const { ensureVibesMediaEntId } = require('./vibes-utils');
 
 async function handle(node, inputs, context) {
-  const { vibeClient, log } = context;
+  const { vibeClient, projectId: sharedProjectId, log } = context;
+
+  const projectId = node.data.projectId || sharedProjectId;
 
   // audioUrl: from upstream vibes_upload_audio or vibes_tts output
   const audioUrl =
@@ -16,12 +19,10 @@ async function handle(node, inputs, context) {
     throw new Error('vibes_animate: no audioUrl found in node config or inputs');
   }
 
-  // imagePrompt: mediaEntId from upstream vibes_upload_image (optional but recommended for lipsync)
-  const imagePrompt =
-    node.data.imagePrompt ||
-    (inputs.find(i => i.mediaEntId && i.generatedImageUrl)?.mediaEntId) ||
-    (inputs.find(i => i.mediaEntId && !i.audioUrl && !i.cdnUrl)?.mediaEntId) ||
-    undefined;
+  // Avatar image: first non-audio input, auto-upload to get mediaEntId + imageUrl (exclude text-only sources)
+  const imageInput = inputs.find(i => !i.audioUrl && !i.cdnUrl && i.sourceType !== 'text' && (i.mediaEntId || i.base64Data || i.generatedImageUrl || i.url || i.previewUrl));
+  const imageMediaEntId = imageInput ? await ensureVibesMediaEntId(imageInput, vibeClient, projectId, log) : null;
+  const imageUrl = imageInput ? (imageInput.generatedImageUrl || imageInput.url || imageInput.previewUrl || null) : null;
 
   const script =
     node.data.script ||
@@ -38,9 +39,9 @@ async function handle(node, inputs, context) {
     audioDurationMs,
     script,
     engine:     node.data.engine || 'midjen',
-    projectId:  node.data.projectId || undefined,
-    ...(imagePrompt ? { 
-      imageUrl: inputs.find(i => i.mediaEntId === imagePrompt)?.generatedImageUrl || inputs.find(i => i.mediaEntId === imagePrompt)?.url || '',
+    ...(projectId ? { projectId } : {}),
+    ...(imageMediaEntId ? { 
+      imageUrl,
       sourceContentItemIds: [{ id: `start-${Date.now()}`, source: 'start_frame' }]
     } : {}),
   });

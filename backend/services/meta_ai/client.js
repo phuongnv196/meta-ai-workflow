@@ -41,6 +41,7 @@ class MetaAIClient {
       conversationId: existingConversationId = null,
       onChunk = null,
       expectVideo = false,
+      modeFast = false,
     } = options;
 
     const inputMediaIds = attachments.map(a => a.id).filter(Boolean);
@@ -56,8 +57,8 @@ class MetaAIClient {
         attachments,
       });
       ws.send(buildPayloadFrame(reqId, protobufBase64));
-      console.log(`[Client] Chat payload gửi thành công (${protobufBase64.length} chars)`);
-    }, existingConversationId, onChunk, expectVideo, inputMediaIds);
+      console.log(`[Client] Chat payload gửi thành công (${protobufBase64.length} chars)${modeFast ? ' [MODE_FAST]' : ''}`);
+    }, existingConversationId, onChunk, expectVideo, inputMediaIds, false, modeFast);
   }
 
   /**
@@ -128,7 +129,7 @@ class MetaAIClient {
    * @param {Function|null} onChunk - optional callback(chunk, streamState)
    * @returns {Promise<object>} streamState
    */
-  _openSession(payloadFn, existingConversationId = null, onChunk = null, expectVideo = false, inputMediaIds = [], isExtendVideo = false) {
+  _openSession(payloadFn, existingConversationId = null, onChunk = null, expectVideo = false, inputMediaIds = [], isExtendVideo = false, modeFast = false) {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(WS_URL, { headers: WS_HEADERS });
 
@@ -147,10 +148,12 @@ class MetaAIClient {
       let inactivityTimer = null;
       let pollingInterval = null;
 
+      // MODE_FAST: shorter timeout since we only need text response
+      const sessionTimeout = modeFast ? 30_000 : SESSION_TIMEOUT_MS;
       const timer = setTimeout(() => {
         console.warn('\n[Client] Timeout — đóng kết nối.');
         ws.close();
-      }, SESSION_TIMEOUT_MS);
+      }, sessionTimeout);
 
       ws.on('open', async () => {
         console.log('[Client] WebSocket connected');
@@ -246,6 +249,17 @@ class MetaAIClient {
             return;
           }
 
+          // MODE_FAST: skip video/image polling entirely, close as soon as text is received
+          if (modeFast) {
+            const hasTextResponse = state.accumulatedText && state.accumulatedText.length > 10;
+            if (hasTextResponse) {
+              if (inactivityTimer) clearTimeout(inactivityTimer);
+              inactivityTimer = setTimeout(() => {
+                console.log('\n[Client] [MODE_FAST] Đã nhận text response. Đóng kết nối nhanh...');
+                ws.close();
+              }, 1000);
+            }
+          } else {
           // Nếu đã nhận đủ kết quả đích (ảnh CDN hoặc video CDN hoàn chỉnh), đóng sớm sau 2s im lặng
           const isVideoRequest = expectVideo || !!state.videoFbid;
           // Nếu là sinh video (isVideoRequest), bắt buộc phải giải mã được link CDN video thật và có videoFbid
@@ -269,6 +283,7 @@ class MetaAIClient {
               console.log('\n[Client] Đã nhận text response cho text-only request. Đóng kết nối...');
               ws.close();
             }, 3000);
+          }
           }
 
           // Nếu có callback tùy chỉnh thì dùng, ngược lại dùng default renderer

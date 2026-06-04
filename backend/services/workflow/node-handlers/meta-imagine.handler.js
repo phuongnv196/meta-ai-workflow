@@ -5,9 +5,9 @@ const { resolveAttachmentsFromEdges } = require('../attachment-resolver');
 async function handle(node, inputs, context) {
   const { client, incomingEdges, results, globalRefMap, nodes } = context;
 
-  const prompt = node.data.prompt
-    || (inputs.find(i => i.promptText)?.promptText)
-    || 'Generate an image';
+  const nodePrompt = (node.data.prompt || '').trim();
+  const inputPrompt = (inputs.find(i => i.promptText)?.promptText || '').trim();
+  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Generate an image';
 
   // Only use attachments from file_input nodes (real uploads), not intermediate mediaIds
   const attachments = resolveAttachmentsFromEdges(

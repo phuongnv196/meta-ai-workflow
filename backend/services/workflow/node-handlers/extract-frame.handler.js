@@ -46,6 +46,14 @@ async function handle(node, inputs, context) {
   const uploadedMediaId = await uploadFile(tempFilePath, 'image/jpeg');
   log(`  Uploaded successfully. Meta AI Media ID: ${uploadedMediaId}`);
 
+  let base64Data = null;
+  try {
+    const fs = require('fs');
+    base64Data = fs.readFileSync(tempFilePath, { encoding: 'base64' });
+  } catch (e) {
+    log(`  Warning: failed to read frame as base64: ${e.message}`);
+  }
+
   const publicUrl = `${config.baseUrl}/temp/${tempFilename}`;
   return {
     videoUrl: publicUrl,
@@ -53,6 +61,7 @@ async function handle(node, inputs, context) {
     mediaId: uploadedMediaId,
     filename: tempFilename,
     mimeType: 'image/jpeg',
+    base64Data,
     attachments: [{
       id: uploadedMediaId,
       mimeType: 'image/jpeg',

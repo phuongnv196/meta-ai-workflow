@@ -7,9 +7,9 @@ const { createTempPath, cleanupFile } = require('../../temp-file.service');
 async function handle(node, inputs, context) {
   const { client, incomingEdges, results, globalRefMap, log } = context;
 
-  let prompt = node.data.prompt
-    || (inputs.find(i => i.promptText)?.promptText)
-    || 'Generate a video';
+  const nodePrompt = (node.data.prompt || '').trim();
+  const inputPrompt = (inputs.find(i => i.promptText)?.promptText || '').trim();
+  let prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Generate a video';
 
   let attachments = [];
 

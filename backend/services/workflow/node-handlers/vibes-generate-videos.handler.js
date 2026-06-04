@@ -1,36 +1,32 @@
 'use strict';
 
 const { pollBatch } = require('./vibes-poll-batch');
+const { ensureVibesMediaEntId } = require('./vibes-utils');
 
 async function handle(node, inputs, context) {
-  const { vibeClient, log } = context;
+  const { vibeClient, projectId: sharedProjectId, log } = context;
 
-  const prompt =
-    node.data.prompt ||
-    (inputs.find(i => i.promptText)?.promptText) ||
-    (inputs.find(i => i.text)?.text) ||
-    'A cinematic video';
+  const nodePrompt = (node.data.prompt || '').trim();
+  const inputPrompt = (inputs.find(i => i.promptText)?.promptText || inputs.find(i => i.text)?.text || '').trim();
+  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'A cinematic video';
 
   const videoModel = node.data.videoModel || 'midjen-short';
   const config     = { videoModel, ...(node.data.config || {}) };
-  
-  const mediaEntIds = inputs.filter(i => i.mediaEntId).map(i => i.mediaEntId);
-  const startFrameId = mediaEntIds[0];
-  const endFrameId = mediaEntIds[1];
+  const projectId  = node.data.projectId || sharedProjectId;
+
+  // Resolve mediaEntIds for image inputs (auto-upload if needed, exclude text-only sources)
+  const imageInputs = inputs.filter(i => !i.audioUrl && !i.cdnUrl && i.sourceType !== 'text');
+  const resolvedIds = [];
+  for (const inp of imageInputs) {
+    const id = await ensureVibesMediaEntId(inp, vibeClient, projectId, log);
+    if (id) resolvedIds.push(id);
+  }
+  const startFrameId = resolvedIds[0];
+  const endFrameId = resolvedIds[1];
 
   // Step 1: create video batch record
   const batchId = `batch-${Date.now()}`;
   log(`  Vibes generateVideos: prompt="${prompt.slice(0, 60)}" model=${videoModel} startFrame=${startFrameId || 'none'} endFrame=${endFrameId || 'none'} batchId=${batchId}`);
-
-  let projectId = node.data.projectId;
-  if (!projectId && (startFrameId || endFrameId)) {
-    try {
-      const projData = await vibeClient.getListProject(1);
-      if (projData?.projects?.[0]?.id) {
-        projectId = projData.projects[0].id;
-      }
-    } catch (err) {}
-  }
 
   const batchConfig = {
     ...config,

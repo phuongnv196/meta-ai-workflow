@@ -1,7 +1,7 @@
 'use strict';
 
 async function handle(node, inputs, context) {
-  const { vibeClient, log } = context;
+  const { vibeClient, projectId: sharedProjectId, log } = context;
 
   // Accept base64 from node config, or from an upstream text_input / file_input result
   const base64Data =
@@ -13,18 +13,10 @@ async function handle(node, inputs, context) {
     throw new Error('vibes_upload_image: no base64Data found in node config or inputs');
   }
 
-  const fileName = node.data.fileName || 'upload.jpg';
-  const mimeType = node.data.mimeType || 'image/jpeg';
+  const fileName = node.data.fileName || inputs.find(i => i.fileName)?.fileName || inputs.find(i => i.filename)?.filename || 'upload.jpg';
+  const mimeType = node.data.mimeType || inputs.find(i => i.mimeType)?.mimeType || 'image/jpeg';
 
-  let projectId = node.data.projectId;
-  if (!projectId) {
-    try {
-      const projData = await vibeClient.getListProject(1);
-      if (projData?.projects?.[0]?.id) {
-        projectId = projData.projects[0].id;
-      }
-    } catch (err) {}
-  }
+  const projectId = node.data.projectId || sharedProjectId;
 
   log(`  Vibes uploadImage: "${fileName}" to project ${projectId || 'none'}`);
 

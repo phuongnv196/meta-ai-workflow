@@ -1,33 +1,30 @@
 'use strict';
 
 const { pollBatch } = require('./vibes-poll-batch');
+const { ensureVibesMediaEntId } = require('./vibes-utils');
 
 async function handle(node, inputs, context) {
-  const { vibeClient, log } = context;
+  const { vibeClient, projectId: sharedProjectId, log } = context;
 
-  const prompt =
-    node.data.prompt ||
-    (inputs.find(i => i.promptText)?.promptText) ||
-    (inputs.find(i => i.text)?.text) ||
-    'A beautiful image';
+  const nodePrompt = (node.data.prompt || '').trim();
+  const inputPrompt = (inputs.find(i => i.promptText)?.promptText || inputs.find(i => i.text)?.text || '').trim();
+  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'A beautiful image';
 
   const count = Number(node.data.count) || 2;
-  const mediaEntId = inputs.find(i => i.mediaEntId)?.mediaEntId;
+  const projectId = node.data.projectId || sharedProjectId;
+
+  // Find image inputs (exclude audio inputs and text-only sources like meta_chat)
+  const imageInputs = inputs.filter(i => !i.audioUrl && !i.cdnUrl && i.sourceType !== 'text');
+  const mediaEntId = await (async () => {
+    for (const inp of imageInputs) {
+      const id = await ensureVibesMediaEntId(inp, vibeClient, projectId, log);
+      if (id) return id;
+    }
+    return null;
+  })();
 
   if (mediaEntId) {
     log(`  Vibes generateImageEdit: prompt="${prompt.slice(0, 60)}" sourceImageEntId=${mediaEntId}`);
-    
-    let projectId = node.data.projectId;
-    if (!projectId) {
-      try {
-        const projData = await vibeClient.getListProject(1);
-        if (projData?.projects?.[0]?.id) {
-          projectId = projData.projects[0].id;
-        }
-      } catch (err) {
-        log(`  Warning: failed to get project list for image-edit: ${err.message}`);
-      }
-    }
 
     const payload = {
       sourceImageEntId: mediaEntId,
@@ -69,7 +66,7 @@ async function handle(node, inputs, context) {
     timestamp:  Date.now(),
     isComplete: false,
     config:     node.data.config || {},
-    projectId:  node.data.projectId || undefined,
+    projectId:  projectId || undefined,
     content:    Array.from({ length: count }, (_, i) => ({
       id:        `${batchId}-content-${i}`,
       type:      'image',

@@ -3,19 +3,17 @@
 async function handle(node, inputs, context) {
   const { vibeClient, results, log } = context;
 
-  const seedPrompt =
-    node.data.prompt ||
-    (inputs.find(i => i.promptText)?.promptText) ||
-    (inputs.find(i => i.text)?.text) ||
-    'A cinematic scene';
+  const nodePrompt = (node.data.prompt || '').trim();
+  const inputPrompt = (inputs.find(i => i.promptText)?.promptText || inputs.find(i => i.text)?.text || '').trim();
+  const seedPrompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'A cinematic scene';
 
   const batchType = node.data.batchType || 'images';
 
-  // Use batchId from upstream generate-images/videos node if available, else omit
+  // Use batchId from upstream generate-images/videos node if available, else generate one
   const batchId =
     node.data.batchId ||
     (inputs.find(i => i.batchId)?.batchId) ||
-    undefined;
+    `batch-prompts-${Date.now()}`;
 
   log(`  Vibes generatePrompts: seed="${seedPrompt.slice(0, 60)}" batchType=${batchType}`);
 

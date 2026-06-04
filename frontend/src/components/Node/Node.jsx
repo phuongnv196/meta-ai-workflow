@@ -59,6 +59,7 @@ const Node = ({ node, transform }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsList, setSuggestionsList] = useState([]);
   const [suggestionQuery, setSuggestionQuery] = useState('');
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [cursorIndex, setCursorIndex] = useState(0);
   const nodeRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -204,6 +205,26 @@ const Node = ({ node, transform }) => {
     }
   };
  
+  const handleSelectSuggestion = (s) => {
+    if (!s) return;
+    const textBeforeAt = promptValue.slice(0, cursorIndex - suggestionQuery.length - 1);
+    const textAfterCursor = promptValue.slice(cursorIndex);
+    const newValue = textBeforeAt + s.name + ' ' + textAfterCursor;
+    setPromptValue(newValue);
+    updateNodeData(node.id, { prompt: newValue });
+    setShowSuggestions(false);
+    setSuggestionIndex(0);
+
+    setTimeout(() => {
+      const textarea = document.querySelector(`.node-textarea-${node.id}`);
+      if (textarea) {
+        textarea.focus();
+        const newPos = textBeforeAt.length + s.name.length + 1;
+        textarea.setSelectionRange(newPos, newPos);
+      }
+    }, 50);
+  };
+
   const renderContent = () => {
     return (
       <>
@@ -347,6 +368,59 @@ const Node = ({ node, transform }) => {
               }
               return null;
             })()}
+
+            {/* MODE_FAST toggle for Meta Chat node */}
+            {node.type === 'meta_chat' && (
+              <div 
+                onMouseDown={e => e.stopPropagation()}
+                style={{
+                  marginTop: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 8px',
+                  background: node.data.modeFast ? 'rgba(250, 204, 21, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+                  border: `1px solid ${node.data.modeFast ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255, 255, 255, 0.05)'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onClick={() => updateNodeData(node.id, { modeFast: !node.data.modeFast })}
+              >
+                <div style={{
+                  width: '32px',
+                  height: '18px',
+                  borderRadius: '9px',
+                  background: node.data.modeFast ? '#facc15' : 'rgba(255, 255, 255, 0.15)',
+                  position: 'relative',
+                  transition: 'background 0.2s',
+                  flexShrink: 0
+                }}>
+                  <div style={{
+                    width: '14px',
+                    height: '14px',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    position: 'absolute',
+                    top: '2px',
+                    left: node.data.modeFast ? '16px' : '2px',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                  }} />
+                </div>
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  fontWeight: '600', 
+                  color: node.data.modeFast ? '#facc15' : '#94a3b8',
+                  letterSpacing: '0.3px'
+                }}>
+                  {node.data.modeFast ? '\u26A1 MODE_FAST' : 'MODE_FAST'}
+                </span>
+                <span style={{ fontSize: '0.6rem', color: '#64748b', marginLeft: 'auto' }}>
+                  {node.data.modeFast ? 'Text-only, faster response' : 'Off'}
+                </span>
+              </div>
+            )}
           </div>
         )}
         {node.type === 'meta_track' && (
@@ -719,7 +793,7 @@ const Node = ({ node, transform }) => {
                 return null;
               })()}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+            {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
               <label style={{ flex: '0 0 auto' }}>Count</label>
               <input
                 type="number" min="1" max="4"
@@ -727,7 +801,7 @@ const Node = ({ node, transform }) => {
                 onChange={e => updateNodeData(node.id, { count: Number(e.target.value) })}
                 style={{ width: '60px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
               />
-            </div>
+            </div> */}
           </div>
         )}
 
