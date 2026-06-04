@@ -45,13 +45,15 @@ function buildSSECallbacks(get, set) {
       addLog({ type: 'info', message: `Workflow started (${data.totalNodes} nodes).` });
     },
     onNodeStarted: (data) => {
-      set({ executingNodeId: data.nodeId });
+      set((state) => ({ executingNodeIds: [...state.executingNodeIds, data.nodeId] }));
       addLog({ type: 'info', message: `⚡ Executing: ${data.label} (${data.type})...` });
     },
     onNodeCompleted: (data) => {
+      set((state) => ({ executingNodeIds: state.executingNodeIds.filter(id => id !== data.nodeId) }));
       handleNodeResult(data.nodeId, data.result, data.label);
     },
     onNodeFailed: (data) => {
+      set((state) => ({ executingNodeIds: state.executingNodeIds.filter(id => id !== data.nodeId) }));
       updateNodeData(data.nodeId, { resultUrl: null, error: data.error });
       addLog({ type: 'error', message: `❌ Failed: ${data.label} - ${data.error}` });
     },
@@ -71,7 +73,7 @@ const useWorkflowStore = create((set, get) => ({
   edges: [],
   activeConnection: null,
   isRunning: false,
-  executingNodeId: null,
+  executingNodeIds: [],
   logs: [],
 
   // Workflow management
@@ -133,7 +135,7 @@ const useWorkflowStore = create((set, get) => ({
     isDirty: true,
   })),
 
-  setExecutingNode: (id) => set({ executingNodeId: id }),
+  setExecutingNode: (id) => set({ executingNodeIds: id ? [id] : [] }),
   setRunning: (val) => set({ isRunning: val }),
   addLog: (log) => set((state) => ({ logs: [...state.logs, { id: Date.now(), ...log }] })),
   clearLogs: () => set({ logs: [] }),
@@ -145,7 +147,7 @@ const useWorkflowStore = create((set, get) => ({
     if (nodes.length === 0) return;
 
     clearLogs();
-    set({ isRunning: true });
+    set({ isRunning: true, executingNodeIds: [] });
     addLog({ type: 'info', message: 'Starting workflow execution...' });
 
     try {
@@ -154,7 +156,7 @@ const useWorkflowStore = create((set, get) => ({
       addLog({ type: 'error', message: `Execution Error: ${error.message}` });
       console.error('Workflow Execution Error:', error);
     } finally {
-      set({ executingNodeId: null, isRunning: false });
+      set({ executingNodeIds: [], isRunning: false });
     }
   },
 
@@ -176,7 +178,7 @@ const useWorkflowStore = create((set, get) => ({
     }
 
     const targetNode = nodes.find(n => n.id === nextNodeId);
-    set({ isRunning: true, executingNodeId: nextNodeId });
+    set({ isRunning: true, executingNodeIds: [nextNodeId] });
     addLog({ type: 'info', message: `🎬 [Step] ${targetNode.data.label}...` });
 
     try {
@@ -184,7 +186,7 @@ const useWorkflowStore = create((set, get) => ({
     } catch (error) {
       addLog({ type: 'error', message: `Lỗi khi chạy step: ${error.message}` });
     } finally {
-      set({ executingNodeId: null, isRunning: false });
+      set({ executingNodeIds: [], isRunning: false });
     }
   },
 
@@ -195,7 +197,7 @@ const useWorkflowStore = create((set, get) => ({
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    set({ isRunning: true, executingNodeId: nodeId });
+    set({ isRunning: true, executingNodeIds: [nodeId] });
     addLog({ type: 'info', message: `🎬 Running: ${node.data.label}...` });
 
     try {
@@ -203,7 +205,7 @@ const useWorkflowStore = create((set, get) => ({
     } catch (error) {
       addLog({ type: 'error', message: `Lỗi khi chạy node: ${error.message}` });
     } finally {
-      set({ executingNodeId: null, isRunning: false });
+      set({ executingNodeIds: [], isRunning: false });
     }
   },
 
@@ -221,7 +223,7 @@ const useWorkflowStore = create((set, get) => ({
         edges: workflow.edges || [],
         isDirty: false,
         logs: [],
-        executingNodeId: null,
+        executingNodeIds: [],
         isRunning: false,
       });
       return workflow;
@@ -282,7 +284,7 @@ const useWorkflowStore = create((set, get) => ({
     edges: [],
     isDirty: false,
     logs: [],
-    executingNodeId: null,
+    executingNodeIds: [],
     isRunning: false,
   }),
 

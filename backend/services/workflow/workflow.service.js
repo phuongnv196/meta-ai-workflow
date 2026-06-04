@@ -150,6 +150,9 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
     }
   }
 
+  // Promise graph to hold execution state of each node
+  const executionPromises = {};
+
   for (const nodeId of executionOrder) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) {
@@ -157,53 +160,79 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
       continue;
     }
 
-    log(`Executing node: ${node.data.label} (${node.type})`);
-    sendEvent('node_started', { nodeId, label: node.data.label, type: node.type });
-
-    // Resolve sorted inputs
     const incomingEdges = edges.filter(e => e.target === nodeId);
-    incomingEdges.sort((edgeA, edgeB) => {
-      const nodeA = nodes.find(n => n.id === edgeA.source);
-      const nodeB = nodes.find(n => n.id === edgeB.source);
-      if (nodeA && nodeB) {
-        if (Math.abs(nodeA.position.y - nodeB.position.y) > 20) {
-          return nodeA.position.y - nodeB.position.y;
+
+    // Create a promise for this node that waits for its dependencies
+    executionPromises[nodeId] = (async () => {
+      // 1. Wait for all upstream dependencies in the current execution run
+      const depPromises = incomingEdges
+        .map(e => e.source)
+        .filter(srcId => executionPromises[srcId])
+        .map(srcId => executionPromises[srcId]);
+
+      await Promise.all(depPromises);
+
+      // 2. Start execution
+      log(`Executing node: ${node.data.label} (${node.type})`);
+      sendEvent('node_started', { nodeId, label: node.data.label, type: node.type });
+
+      // Resolve sorted inputs for the handler
+      incomingEdges.sort((edgeA, edgeB) => {
+        const nodeA = nodes.find(n => n.id === edgeA.source);
+        const nodeB = nodes.find(n => n.id === edgeB.source);
+        if (nodeA && nodeB) {
+          if (Math.abs(nodeA.position.y - nodeB.position.y) > 20) {
+            return nodeA.position.y - nodeB.position.y;
+          }
+          return nodeA.position.x - nodeB.position.x;
         }
-        return nodeA.position.x - nodeB.position.x;
+        return 0;
+      });
+      const inputs = incomingEdges.map(e => results[e.source]).filter(Boolean);
+
+      // Build execution context for handlers
+      const context = {
+        client,
+        vibeClient,
+        nodes,
+        edges,
+        incomingEdges,
+        results,
+        globalRefMap,
+        projectId: sharedProjectId,
+        log,
+      };
+
+      const handler = getHandler(node.type);
+      let result;
+
+      if (handler) {
+        try {
+          result = await handler.handle(node, inputs, context);
+        } catch (error) {
+          log(`  Error in node ${nodeId} (${node.type}): ${error.message}`);
+          throw error; // Rethrow to halt downstream dependent nodes
+        }
+      } else {
+        log(`  Skipping unknown node type: ${node.type}`);
+        result = inputs[0] || {};
       }
-      return 0;
-    });
-    const inputs = incomingEdges.map(e => results[e.source]).filter(Boolean);
 
-    // Build execution context for handlers
-    const context = {
-      client,
-      vibeClient,
-      nodes,
-      edges,
-      incomingEdges,
-      results,
-      globalRefMap,
-      projectId: sharedProjectId,
-      log,
-    };
-
-    const handler = getHandler(node.type);
-    let result;
-
-    if (handler) {
-      result = await handler.handle(node, inputs, context);
-    } else {
-      log(`  Skipping unknown node type: ${node.type}`);
-      result = inputs[0] || {};
-    }
-
-    results[nodeId] = result;
-    log(`  Node ${nodeId} finished successfully.`);
-    sendEvent('node_completed', { nodeId, label: node.data.label, type: node.type, result });
+      results[nodeId] = result;
+      log(`  Node ${nodeId} finished successfully.`);
+      sendEvent('node_completed', { nodeId, label: node.data.label, type: node.type, result });
+    })();
   }
 
-  log('Workflow execution completed successfully.');
+  // Wait for all nodes in the execution order to finish
+  try {
+    await Promise.all(Object.values(executionPromises));
+    log('Workflow execution completed successfully.');
+  } catch (error) {
+    log(`Workflow execution failed: ${error.message}`);
+    // Optionally notify frontend of workflow failure here if needed
+  }
+
   sendEvent('workflow_completed', { results });
 
   return results;

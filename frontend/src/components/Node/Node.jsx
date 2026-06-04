@@ -52,7 +52,7 @@ const getParentReferences = (nodeId, nodes, edges) => {
 };
 
 const Node = ({ node, transform }) => {
-  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeId, runSingleNode } = useWorkflowStore();
+  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeIds, runSingleNode } = useWorkflowStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [promptValue, setPromptValue] = useState(node.data.prompt || '');
@@ -64,7 +64,7 @@ const Node = ({ node, transform }) => {
   const nodeRef = useRef(null);
   const fileInputRef = useRef(null);
  
-  const isExecuting = executingNodeId === node.id;
+  const isExecuting = executingNodeIds?.includes(node.id);
   const resultUrl = node.data.resultUrl;
   const previewUrl = node.data.previewUrl;
  
