@@ -106,13 +106,17 @@ This runs both services concurrently:
 | Node | Description |
 |---|---|
 | **Text Prompt** | Input raw text prompts |
-| **Attachments** | Upload reference images to Meta AI |
+| **Meta Upload Image** / **Vibes Upload Image** | Upload reference images to Meta AI or Vibes |
+| **Vibes Upload Audio** | Upload audio files |
 | **Meta AI Chat** | Connects to Meta AI (text + attachments) |
-| **Imagine (Image)** | Generates sleek images from text prompts |
-| **Imagine (Video)** | Generates video from images + prompts |
+| **Imagine (Image)** / **Vibes Generate Images** | Generates sleek images from text prompts |
+| **Imagine (Video)** / **Vibes Generate Videos** | Generates video from images + prompts |
+| **Vibes Animate (Lip-sync)** | Animates images with lip-sync |
 | **Extract Frame** | Extracts a specific frame from a video (FFmpeg) |
 | **Merge Videos** | Merges multiple videos sequentially |
 | **Track Resolver** | Resolves music metadata and URLs from Meta AI |
+| **Condition** | Logical condition node for conditional workflows |
+| **Store Result** | Store results into a database |
 
 ## 📡 API Endpoints
 
@@ -120,6 +124,9 @@ This runs both services concurrently:
 |---|---|---|
 | `POST` | `/execute` | Run workflow and receive a Server-Sent Events (SSE) stream |
 | `POST` | `/upload` | Upload file (base64) to Meta AI |
+| `GET`/`POST`/`PUT`/`DELETE` | `/workflows` | Manage saved workflows (CRUD) |
+| `POST` | `/workflows/:id/duplicate` | Duplicate an existing workflow |
+| `GET`/`POST`/`PUT`/`DELETE` | `/custom-nodes` | Manage custom code nodes (CRUD) |
 | `GET` | `/health` | Server health check |
 
 ## 📝 Important Notes
