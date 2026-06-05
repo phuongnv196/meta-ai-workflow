@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import useWorkflowStore from '../../store/useWorkflowStore';
 import Node from '../Node/Node';
-import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward, Save, SaveAll, ArrowLeft, MessageSquare, Image as ImageIcon, Video, Upload, Crop, Film, Music, FileText, Mic, Layers, Clapperboard, PersonStanding, Zap, Database } from 'lucide-react';
+import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward, Save, SaveAll, ArrowLeft, MessageSquare, Image as ImageIcon, Video, Upload, Crop, Film, Music, FileText, Mic, Layers, Clapperboard, PersonStanding, Zap, Database, PackagePlus, Trash2, X } from 'lucide-react';
 import './WorkflowCanvas.scss';
 
 const NODE_CATEGORIES = [
@@ -48,21 +48,65 @@ const NODE_CATEGORIES = [
 ];
 
 const WorkflowCanvas = ({ onSave, onBack }) => {
-  const { nodes, edges, activeConnection, setActiveConnection, addNode, removeEdge, isRunning, runWorkflow, runStep, workflowId, workflowName, isDirty, isSaving } = useWorkflowStore();
+  const { nodes, edges, activeConnection, setActiveConnection, addNode, removeEdge, removeNodes, isRunning, runWorkflow, runStep, workflowId, workflowName, isDirty, isSaving, selectedNodeIds, setSelectedNodeIds, toggleNodeSelection, clearSelection, createCustomNodeFromSelection, customNodeLibrary } = useWorkflowStore();
   const canvasRef = useRef(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState(null);
   const [contextMenuSearch, setContextMenuSearch] = useState('');
+  const [selectionRect, setSelectionRect] = useState(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [showCreateCustomNodeDialog, setShowCreateCustomNodeDialog] = useState(false);
+  const [customNodeForm, setCustomNodeForm] = useState({ name: '', description: '', color: '#f59e0b' });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+      
+      // Handle delete key
+      if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        const { selectedNodeIds, removeNodes } = useWorkflowStore.getState();
+        if (selectedNodeIds.length > 0) {
+          e.preventDefault();
+          removeNodes(selectedNodeIds);
+        }
+      }
+    };
+    const handleKeyUp = (e) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   const onDragOver = useCallback((e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
+  const addCustomNodeFromTemplate = useWorkflowStore(s => s.addCustomNodeFromTemplate);
+
   const onDrop = useCallback((e) => {
     e.preventDefault();
+
+    // Handle custom node template drop
+    const customNodeId = e.dataTransfer.getData('application/custom-node-id');
+    if (customNodeId) {
+      addCustomNodeFromTemplate(customNodeId);
+      return;
+    }
+
     const type = e.dataTransfer.getData('application/node-type');
     const label = e.dataTransfer.getData('application/node-label');
     if (!type) return;
@@ -80,13 +124,29 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
       position,
       data: { label: label || `${type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` },
     });
-  }, [addNode, transform]);
+  }, [addNode, addCustomNodeFromTemplate, transform]);
 
   const onMouseDown = (e) => {
     if (contextMenu) setContextMenu(null);
-    if (e.target.classList.contains('workflow-canvas') || e.target.id === 'canvas-grid' || e.target.classList.contains('canvas-content')) {
+    const isCanvas = e.target.classList.contains('workflow-canvas') || e.target.id === 'canvas-grid' || e.target.classList.contains('canvas-content');
+    if (!isCanvas) return;
+
+    // Pan with Middle Mouse Button or Spacebar
+    if (e.button === 1 || isSpacePressed) {
+      if (selectedNodeIds.length > 0 && !e.shiftKey) clearSelection();
       setIsPanning(true);
       setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+      return;
+    }
+
+    // Left click on background starts rectangle selection
+    if (e.button === 0) {
+      if (!e.shiftKey && selectedNodeIds.length > 0) clearSelection();
+      const rect = canvasRef.current.getBoundingClientRect();
+      const worldX = (e.clientX - rect.left - transform.x) / transform.scale;
+      const worldY = (e.clientY - rect.top - transform.y) / transform.scale;
+      setIsSelecting(true);
+      setSelectionRect({ startX: worldX, startY: worldY, endX: worldX, endY: worldY });
     }
   };
 
@@ -125,6 +185,13 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
   };
 
   const onMouseMove = (e) => {
+    if (isSelecting && selectionRect) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const worldX = (e.clientX - rect.left - transform.x) / transform.scale;
+      const worldY = (e.clientY - rect.top - transform.y) / transform.scale;
+      setSelectionRect(prev => ({ ...prev, endX: worldX, endY: worldY }));
+      return;
+    }
     if (activeConnection) {
       const rect = canvasRef.current.getBoundingClientRect();
       setActiveConnection({
@@ -142,10 +209,36 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
   };
 
   const onMouseUp = () => {
+    if (isSelecting && selectionRect) {
+      // Compute which nodes fall inside the selection rectangle
+      const minX = Math.min(selectionRect.startX, selectionRect.endX);
+      const maxX = Math.max(selectionRect.startX, selectionRect.endX);
+      const minY = Math.min(selectionRect.startY, selectionRect.endY);
+      const maxY = Math.max(selectionRect.startY, selectionRect.endY);
+
+      const selected = nodes.filter(n => {
+        const nw = n.dimensions?.width || 220;
+        const nh = n.dimensions?.height || 150;
+        return n.position.x + nw > minX && n.position.x < maxX &&
+               n.position.y + nh > minY && n.position.y < maxY;
+      }).map(n => n.id);
+
+      setSelectedNodeIds(selected);
+      setIsSelecting(false);
+      setSelectionRect(null);
+      return;
+    }
     setIsPanning(false);
     if (activeConnection) {
       setActiveConnection(null);
     }
+  };
+
+  const handleCreateCustomNode = async () => {
+    if (!customNodeForm.name.trim()) return;
+    await createCustomNodeFromSelection(customNodeForm);
+    setShowCreateCustomNodeDialog(false);
+    setCustomNodeForm({ name: '', description: '', color: '#f59e0b' });
   };
 
   useEffect(() => {
@@ -164,20 +257,28 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, [transform.scale]);
 
-  const getPortPosition = (nodeId, type) => {
+  const getPortPosition = (nodeId, type, handleId = null) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
 
-    // Use world-space coordinates only.
-    // node.dimensions stores offsetWidth/offsetHeight (CSS layout pixels = world pixels),
-    // and node.position is in world coordinates — so this is always correct regardless
-    // of zoom level or node resize, and never reads stale DOM during render.
     const nodeWidth = node.dimensions?.width || 220;
     const nodeHeight = node.dimensions?.height || 150;
 
+    let portY = node.position.y + nodeHeight / 2;
+
+    if (node.type === 'custom_node') {
+      const handles = type === 'out' ? node.data.exposedOutputs : node.data.exposedInputs;
+      if (handles && handles.length > 0 && handleId) {
+        const index = handles.indexOf(handleId);
+        if (index !== -1) {
+          portY = node.position.y + ((index + 1) * nodeHeight) / (handles.length + 1);
+        }
+      }
+    }
+
     return {
       x: type === 'out' ? node.position.x + nodeWidth : node.position.x,
-      y: node.position.y + nodeHeight / 2,
+      y: portY,
     };
   };
 
@@ -204,6 +305,7 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
   return (
     <div
       className="workflow-canvas"
+      style={{ cursor: isSpacePressed ? (isPanning ? 'grabbing' : 'grab') : (isSelecting ? 'crosshair' : 'default') }}
       ref={canvasRef}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -246,8 +348,8 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
           </defs> */}
 
           {edges.map((edge) => {
-            const start = getPortPosition(edge.source, 'out');
-            const end = getPortPosition(edge.target, 'in');
+            const start = getPortPosition(edge.source, 'out', edge.sourceHandle);
+            const end = getPortPosition(edge.target, 'in', edge.targetHandle);
             const dx = Math.abs(end.x - start.x) * 0.5;
             const d = `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`;
 
@@ -266,13 +368,32 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
               strokeWidth="2"
               strokeDasharray="5,5"
               fill="none"
+              style={{ pointerEvents: 'none' }}
             />
           )}
         </svg>
 
+        {/* Selection rectangle */}
+        {isSelecting && selectionRect && (
+          <div
+            style={{
+              position: 'absolute',
+              left: Math.min(selectionRect.startX, selectionRect.endX),
+              top: Math.min(selectionRect.startY, selectionRect.endY),
+              width: Math.abs(selectionRect.endX - selectionRect.startX),
+              height: Math.abs(selectionRect.endY - selectionRect.startY),
+              border: '2px dashed #38bdf8',
+              background: 'rgba(56, 189, 248, 0.08)',
+              borderRadius: '4px',
+              pointerEvents: 'none',
+              zIndex: 9998,
+            }}
+          />
+        )}
+
         <div className="nodes-layer">
           {nodes.map((node) => (
-            <Node key={node.id} node={node} transform={transform} />
+            <Node key={node.id} node={node} transform={transform} isSelected={selectedNodeIds.includes(node.id)} />
           ))}
         </div>
       </div>
@@ -359,6 +480,137 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
               </div>
             );
           })}
+          {/* Dynamic custom nodes category */}
+          {(() => {
+            const filteredCustom = customNodeLibrary.filter(tpl =>
+              tpl.name.toLowerCase().includes(contextMenuSearch.toLowerCase())
+            );
+            if (filteredCustom.length === 0) return null;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '4px 8px' }}>
+                  Custom Nodes
+                </span>
+                {filteredCustom.map(tpl => (
+                  <div
+                    key={tpl.id}
+                    className="context-menu-item"
+                    onClick={() => {
+                      addCustomNodeFromTemplate(tpl.id);
+                      setContextMenu(null);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      color: '#e2e8f0',
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ color: tpl.color || '#f59e0b', display: 'flex' }}><PackagePlus size={14} /></div>
+                    <span>{tpl.name}</span>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', marginLeft: 'auto' }}>{tpl.subNodeCount}n</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          </div>
+        </div>
+      )}
+
+      {/* Create Custom Node dialog */}
+      {showCreateCustomNodeDialog && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+          onClick={() => setShowCreateCustomNodeDialog(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#1e293b', borderRadius: '16px', padding: '24px',
+              border: '1px solid rgba(255,255,255,0.1)', width: '400px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ color: '#f1f5f9', margin: 0, fontSize: '1.1rem' }}>Create Custom Node</h3>
+              <button onClick={() => setShowCreateCustomNodeDialog(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={18} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '4px' }}>Name *</label>
+                <input
+                  type="text" autoFocus
+                  value={customNodeForm.name}
+                  onChange={(e) => setCustomNodeForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Clothing Transfer"
+                  style={{
+                    width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+                    color: '#f1f5f9', fontSize: '0.9rem', outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCustomNode(); }}
+                />
+              </div>
+              <div>
+                <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '4px' }}>Description</label>
+                <input
+                  type="text"
+                  value={customNodeForm.description}
+                  onChange={(e) => setCustomNodeForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Optional description"
+                  style={{
+                    width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+                    color: '#f1f5f9', fontSize: '0.9rem', outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginBottom: '4px' }}>Color</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#ec4899', '#06b6d4', '#84cc16'].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setCustomNodeForm(prev => ({ ...prev, color: c }))}
+                      style={{
+                        width: '28px', height: '28px', borderRadius: '50%', background: c,
+                        border: customNodeForm.color === c ? '3px solid #fff' : '2px solid transparent',
+                        cursor: 'pointer', transition: 'border 0.2s',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '4px' }}>
+                {selectedNodeIds.length} nodes selected
+              </div>
+              <button
+                onClick={handleCreateCustomNode}
+                disabled={!customNodeForm.name.trim()}
+                style={{
+                  marginTop: '8px', padding: '12px', background: customNodeForm.name.trim() ? '#f59e0b' : '#334155',
+                  color: customNodeForm.name.trim() ? '#000' : '#64748b',
+                  border: 'none', borderRadius: '10px', fontWeight: '600',
+                  fontSize: '0.9rem', cursor: customNodeForm.name.trim() ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Create Custom Node
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -383,7 +635,6 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
         ) : (
           <button className="run-btn" onClick={runWorkflow}>
             <Play size={18} />
-            <span>Run Workflow</span>
           </button>
         )}
 
@@ -406,12 +657,65 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
         title="Chạy từng node đơn lẻ theo thứ tự"
         >
           <SkipForward size={18} />
-          <span>Execute Step</span>
         </button>
         <div className="divider" />
         <button onClick={() => handleZoom(1.1)} title="Zoom In"><ZoomIn size={18} /></button>
         <button onClick={() => handleZoom(0.9)} title="Zoom Out"><ZoomOut size={18} /></button>
         <button onClick={handleReset} title="Reset View"><RotateCcw size={18} /></button>
+        {selectedNodeIds.length > 0 && (
+          <>
+            <div className="divider" />
+            <button
+              onClick={() => removeNodes(selectedNodeIds)}
+              title="Delete Selected Nodes"
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#ef4444',
+                padding: '0.6rem 1rem',
+                borderRadius: '10px',
+                fontWeight: '500',
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'}
+              onMouseOut={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+            >
+              <Trash2 size={18} />
+              <span>({selectedNodeIds.length})</span>
+            </button>
+            {selectedNodeIds.length >= 2 && (
+              <button
+                onClick={() => setShowCreateCustomNodeDialog(true)}
+                title="Create Custom Node from selection"
+                style={{
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  color: '#f59e0b',
+                  padding: '0.6rem 1rem',
+                  borderRadius: '10px',
+                  fontWeight: '500',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  marginLeft: '0.5rem',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(245, 158, 11, 0.25)'}
+                onMouseOut={e => e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)'}
+              >
+                <PackagePlus size={18} />
+                <span>Group</span>
+              </button>
+            )}
+          </>
+        )}
         {onSave && (
           <>
             <div className="divider" />

@@ -13,4 +13,5 @@ export const REFERENCE_NODE_TYPES = [
   'vibes_generate_videos',
   'vibes_tts',
   'vibes_animate',
+  'custom_node',
 ];

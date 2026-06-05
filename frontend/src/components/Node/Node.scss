@@ -73,6 +73,36 @@
       box-shadow: 0 0 20px $primary;
       animation: pulse 1.5s infinite;
     }
+
+    .port-label {
+      position: absolute;
+      font-size: 0.5rem;
+      font-weight: bold;
+      color: #fff;
+      background: $primary;
+      padding: 2px 4px;
+      border-radius: 4px;
+      top: -16px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+
+      &.port-label-in {
+        left: 50%;
+        transform: translateX(-50%);
+        background: #38bdf8;
+      }
+      &.port-label-out {
+        left: 50%;
+        transform: translateX(-50%);
+        background: #10b981;
+      }
+    }
+
+    &:hover .port-label {
+      opacity: 1;
+    }
   }
 
   .node-header {

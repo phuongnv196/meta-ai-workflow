@@ -3,7 +3,8 @@ import useWorkflowStore from '../../store/useWorkflowStore';
 import { 
   Settings, Trash2, MessageSquare, Image as ImageIcon, Video, 
   FileText, Zap, ChevronRight, Loader2, ExternalLink, Music, Crop, Film, Play,
-  Upload, Mic, Wand2, Layers, Clapperboard, Speaker, PersonStanding
+  Upload, Mic, Wand2, Layers, Clapperboard, Speaker, PersonStanding,
+  PackagePlus, Package, Pencil, Ungroup
 } from 'lucide-react';
 import { REFERENCE_NODE_TYPES } from '../../constants';
 import { API_BASE_URL } from '../../config';
@@ -61,8 +62,11 @@ const getParentReferences = (nodeId, nodes, edges) => {
   return orderedRefs;
 };
 
-const Node = ({ node, transform }) => {
-  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeIds, runSingleNode, stopWorkflow } = useWorkflowStore();
+const Node = ({ node, transform, isSelected }) => {
+  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeIds, runSingleNode, stopWorkflow, toggleNodeSelection, unpackCustomNode } = useWorkflowStore();
+  const [showCustomNodeEditor, setShowCustomNodeEditor] = useState(false);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editLabelValue, setEditLabelValue] = useState(node.data.label);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [promptValue, setPromptValue] = useState(node.data.prompt || '');
@@ -124,12 +128,15 @@ const Node = ({ node, transform }) => {
     window.addEventListener('mouseup', onMouseUp);
   };
  
-  const onPortMouseDown = (e, type) => {
+  const onPortMouseDown = (e, type, handleId = null) => {
     e.stopPropagation();
     if (type === 'out' && nodeRef.current) {
-      const centerY = node.position.y + nodeRef.current.offsetHeight / 2;
+      const portElement = e.currentTarget;
+      const centerY = node.position.y + portElement.offsetTop + (portElement.offsetHeight / 2 || 6);
+      
       setActiveConnection({
         source: node.id,
+        sourceHandle: handleId,
         startX: node.position.x + nodeRef.current.offsetWidth, 
         startY: centerY,
         currentX: node.position.x + nodeRef.current.offsetWidth,
@@ -138,11 +145,13 @@ const Node = ({ node, transform }) => {
     }
   };
  
-  const onPortMouseUp = (e, type) => {
+  const onPortMouseUp = (e, type, handleId = null) => {
     if (type === 'in' && activeConnection && activeConnection.source !== node.id) {
       addEdge({
         source: activeConnection.source,
+        sourceHandle: activeConnection.sourceHandle,
         target: node.id,
+        targetHandle: handleId
       });
     }
   };
@@ -211,6 +220,7 @@ const Node = ({ node, transform }) => {
       case 'vibes_generate_videos':  return <Clapperboard size={18} color="#fb923c" />;
       // case 'vibes_tts':              return <Speaker size={18} color="#60a5fa" />;
       case 'vibes_animate':          return <PersonStanding size={18} color="#f87171" />;
+      case 'custom_node':            return <Package size={18} color={node.data.color || '#f59e0b'} />;
       default: return <Settings size={18} color="#94a3b8" />;
     }
   };
@@ -236,6 +246,133 @@ const Node = ({ node, transform }) => {
   };
 
   const renderContent = () => {
+    if (node.type === 'custom_node') {
+      return (
+        <>
+          <div className="node-custom-ui" style={{ padding: '8px 0' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 12px', background: 'rgba(245, 158, 11, 0.08)',
+              borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.15)',
+            }}>
+              <Package size={16} color={node.data.color || '#f59e0b'} />
+              <span style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>
+                {node.data.subNodeCount || node.data.subNodes?.length || 0} nodes inside
+              </span>
+            </div>
+            {node.data.description && (
+              <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '6px 0 0', lineHeight: '1.4' }}>
+                {node.data.description}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowCustomNodeEditor(!showCustomNodeEditor); }}
+                style={{
+                  padding: '6px 12px', background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
+                  color: '#94a3b8', fontSize: '0.75rem', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  transition: 'all 0.2s', flex: 1, justifyContent: 'center',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseDown={e => e.stopPropagation()}
+              >
+                <Pencil size={12} /> {showCustomNodeEditor ? 'Hide' : 'Edit'}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); unpackCustomNode(node.id); }}
+                style={{
+                  padding: '6px 12px', background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: '6px',
+                  color: '#38bdf8', fontSize: '0.75rem', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  transition: 'all 0.2s', flex: 1, justifyContent: 'center',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'}
+                onMouseOut={e => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'}
+                title="Rã nhóm custom node này ra canvas để sửa flow"
+              >
+                <Ungroup size={12} /> Unpack Flow
+              </button>
+            </div>
+          </div>
+          {showCustomNodeEditor && node.data.subNodes && (
+            <div className="node-custom-ui" style={{ marginTop: '8px' }} onMouseDown={e => e.stopPropagation()}>
+              <label style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sub-nodes</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+                {node.data.subNodes.map((sn, idx) => {
+                  const isInput = node.data.exposedInputs?.includes(sn.id);
+                  const isOutput = node.data.exposedOutputs?.includes(sn.id);
+                  return (
+                    <div key={sn.id} style={{
+                      display: 'flex', flexDirection: 'column', gap: '4px',
+                      padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)',
+                      borderRadius: '8px', fontSize: '0.75rem', color: '#cbd5e1',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#64748b', fontSize: '0.65rem', minWidth: '18px' }}>#{idx + 1}</span>
+                        <input
+                          type="text"
+                          value={sn.data?.label || ''}
+                          onChange={(e) => {
+                            const newSubNodes = node.data.subNodes.map(n => n.id === sn.id ? { ...n, data: { ...n.data, label: e.target.value } } : n);
+                            updateNodeData(node.id, { subNodes: newSubNodes });
+                          }}
+                          style={{
+                            flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', 
+                            borderRadius: '4px', color: '#e2e8f0', fontSize: '0.75rem', padding: '2px 6px', outline: 'none'
+                          }}
+                          title="Tên node con"
+                        />
+                        {isInput && <span style={{ fontSize: '0.6rem', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>IN</span>}
+                        {isOutput && <span style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>OUT</span>}
+                      </div>
+                      {(sn.type === 'text_input' || sn.type === 'meta_chat' || sn.type === 'meta_imagine' || sn.type === 'meta_video_gen' || sn.type === 'meta_video') && (
+                        <textarea
+                          placeholder="Prompt..."
+                          value={sn.data?.prompt || ''}
+                          onChange={(e) => {
+                            const newSubNodes = node.data.subNodes.map(n => n.id === sn.id ? { ...n, data: { ...n.data, prompt: e.target.value } } : n);
+                            updateNodeData(node.id, { subNodes: newSubNodes });
+                          }}
+                          style={{
+                            width: '100%', minHeight: '60px', padding: '6px', background: 'rgba(0,0,0,0.3)', boxSizing: 'border-box',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#f1f5f9',
+                            fontSize: '0.75rem', outline: 'none', resize: 'vertical', marginTop: '4px'
+                          }}
+                          onMouseDown={e => e.stopPropagation()}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {resultUrl && (
+            <div className="result-view" onMouseDown={e => e.stopPropagation()} style={{ marginTop: '8px' }}>
+              <label>Result</label>
+              {resultUrl.endsWith('.mp4') || resultUrl.endsWith('.webm') ? (
+                <video src={resultUrl} controls autoPlay loop muted style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: '4px' }} />
+              ) : resultUrl.endsWith('.mp3') || resultUrl.endsWith('.wav') ? (
+                <audio src={resultUrl} controls style={{ width: '100%' }} />
+              ) : (
+                <img src={resultUrl} alt="Result" style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: '4px' }} />
+              )}
+            </div>
+          )}
+          {node.data.error && (
+            <div className="node-custom-ui error-view" onMouseDown={e => e.stopPropagation()} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
+              <label style={{ color: '#991b1b', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>Execution Error</label>
+              <span style={{ lineHeight: '1.4', display: 'block' }}>{node.data.error}</span>
+            </div>
+          )}
+        </>
+      );
+    }
+
     return (
       <>
         {(node.type === 'text_input' || node.type === 'meta_chat' || node.type === 'meta_imagine' || node.type === 'meta_video_gen' || node.type === 'meta_video') && (
@@ -1299,16 +1436,110 @@ const Node = ({ node, transform }) => {
     <div
       ref={nodeRef}
       id={node.id}
-      className={`workflow-node node-type-${node.type} ${isDragging ? 'dragging' : ''} ${isExecuting ? 'executing' : ''}`}
-      style={{ transform: `translate(${node.position.x}px, ${node.position.y}px)` }}
-      onMouseDown={onMouseDown}
+      className={`workflow-node node-type-${node.type} ${isDragging ? 'dragging' : ''} ${isExecuting ? 'executing' : ''} ${isSelected ? 'selected' : ''}`}
+      style={{
+        transform: `translate(${node.position.x}px, ${node.position.y}px)`,
+        ...(isSelected ? { boxShadow: '0 0 0 2px #38bdf8, 0 0 20px rgba(56, 189, 248, 0.3)' } : {}),
+        ...(node.type === 'custom_node' ? { borderColor: node.data.color || '#f59e0b' } : {}),
+      }}
+      onMouseDown={(e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.stopPropagation();
+          toggleNodeSelection(node.id);
+          return;
+        }
+        onMouseDown(e);
+      }}
     >
-      <div className={`port port-in ${activeConnection ? 'port-active' : ''}`} onMouseUp={(e) => onPortMouseUp(e, 'in')} />
-      <div className="port port-out" onMouseDown={(e) => onPortMouseDown(e, 'out')} />
+      <div className="node-ports-container">
+        {node.type === 'custom_node' && node.data.exposedInputs?.length > 0 ? (
+          node.data.exposedInputs.map((inputId, i) => {
+            const subNode = node.data.subNodes?.find(sn => sn.id === inputId);
+            const label = subNode?.data?.label || `Input ${i + 1}`;
+            const percentage = ((i + 1) * 100) / (node.data.exposedInputs.length + 1);
+            return (
+              <div 
+                key={inputId}
+                data-handle={inputId}
+                className={`port port-in ${activeConnection ? 'port-active' : ''}`} 
+                style={{ top: `${percentage}%` }}
+                onMouseUp={(e) => onPortMouseUp(e, 'in', inputId)}
+              >
+                <span className="port-label port-label-in">{label}</span>
+              </div>
+            );
+          })
+        ) : (
+          <div className={`port port-in ${activeConnection ? 'port-active' : ''}`} onMouseUp={(e) => onPortMouseUp(e, 'in')}>
+             {node.type === 'custom_node' && <span className="port-label port-label-in">IN</span>}
+          </div>
+        )}
+
+        {node.type === 'custom_node' && node.data.exposedOutputs?.length > 0 ? (
+          node.data.exposedOutputs.map((outputId, i) => {
+            const subNode = node.data.subNodes?.find(sn => sn.id === outputId);
+            const label = subNode?.data?.label || `Output ${i + 1}`;
+            const percentage = ((i + 1) * 100) / (node.data.exposedOutputs.length + 1);
+            return (
+              <div 
+                key={outputId}
+                data-handle={outputId}
+                className="port port-out" 
+                style={{ top: `${percentage}%` }}
+                onMouseDown={(e) => onPortMouseDown(e, 'out', outputId)}
+              >
+                <span className="port-label port-label-out">{label}</span>
+              </div>
+            );
+          })
+        ) : (
+          <div className="port port-out" onMouseDown={(e) => onPortMouseDown(e, 'out')}>
+            {node.type === 'custom_node' && <span className="port-label port-label-out">OUT</span>}
+          </div>
+        )}
+      </div>
 
       <div className="node-header">
         <span className="node-icon">{isExecuting ? <Loader2 size={18} className="spin" /> : getIcon()}</span>
-        <span className="node-label">{node.data.label}</span>
+        
+        {isEditingLabel ? (
+          <input
+            type="text"
+            className="node-label-edit"
+            value={editLabelValue}
+            onChange={(e) => setEditLabelValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setIsEditingLabel(false);
+                updateNodeData(node.id, { label: editLabelValue });
+              }
+            }}
+            onBlur={() => {
+              setIsEditingLabel(false);
+              updateNodeData(node.id, { label: editLabelValue });
+            }}
+            autoFocus
+            onMouseDown={e => e.stopPropagation()}
+            style={{
+              flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid #38bdf8', borderRadius: '4px',
+              color: '#fff', fontSize: '0.85rem', padding: '2px 4px', outline: 'none', width: '100%', minWidth: '80px'
+            }}
+          />
+        ) : (
+          <span 
+            className="node-label" 
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setEditLabelValue(node.data.label);
+              setIsEditingLabel(true);
+            }}
+            title="Double click to rename"
+            style={{ cursor: 'text' }}
+          >
+            {node.data.label}
+          </span>
+        )}
+
         <div className="node-actions">
             {isExecuting ? (
               <button 

@@ -23,6 +23,8 @@ const handlers = {
   vibes_generate_videos:   require('./vibes-generate-videos.handler'),
   vibes_tts:               require('./vibes-tts.handler'),
   vibes_animate:           require('./vibes-animate.handler'),
+  // Custom composite node
+  custom_node:             require('./custom-node.handler'),
 };
 
 function getHandler(nodeType) {

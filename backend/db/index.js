@@ -4,7 +4,7 @@ const path = require('path');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'db.json');
 
-const defaultData = { workflows: [] };
+const defaultData = { workflows: [], customNodes: [] };
 
 let _db = null;
 
