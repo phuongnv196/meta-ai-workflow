@@ -15,8 +15,14 @@ const executeController = async (req, res) => {
         res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
+    const abortController = new AbortController();
+    res.on('close', () => {
+        abortController.abort();
+        log('Client disconnected, aborting workflow execution.');
+    });
+
     try {
-        await executeWorkflow({ nodes, edges, targetNodeId }, sendEvent);
+        await executeWorkflow({ nodes, edges, targetNodeId, signal: abortController.signal }, sendEvent);
         res.end();
     } catch (error) {
         log(`CRITICAL ERROR during execution: ${error.message}`);

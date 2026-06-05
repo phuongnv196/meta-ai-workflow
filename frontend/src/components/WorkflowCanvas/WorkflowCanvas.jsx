@@ -370,10 +370,23 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
           </button>
         )}
         {workflowName && <span className="toolbar-name">{workflowName}{isDirty ? ' •' : ''}</span>}
-        <button className={`run-btn ${isRunning ? 'running' : ''}`} onClick={runWorkflow} disabled={isRunning}>
-          {isRunning ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
-          <span>{isRunning ? 'Running Flow...' : 'Run Workflow'}</span>
-        </button>
+        
+        {isRunning ? (
+          <button 
+            className="run-btn running" 
+            onClick={() => useWorkflowStore.getState().stopWorkflow()}
+            style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+          >
+            <Loader2 className="spin" size={18} />
+            <span>Stop Workflow</span>
+          </button>
+        ) : (
+          <button className="run-btn" onClick={runWorkflow}>
+            <Play size={18} />
+            <span>Run Workflow</span>
+          </button>
+        )}
+
         <button className="step-btn" onClick={runStep} disabled={isRunning} style={{
           background: 'rgba(255, 255, 255, 0.05)',
           border: '1px solid rgba(255, 255, 255, 0.1)',

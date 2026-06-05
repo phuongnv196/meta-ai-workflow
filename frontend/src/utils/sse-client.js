@@ -12,11 +12,12 @@ import { API_BASE_URL } from '../config';
  * @param {Function} callbacks.onWorkflowCompleted - (data) => void
  * @param {Function} callbacks.onWorkflowFailed    - (data) => void
  */
-export async function executeViaSSE(payload, callbacks) {
+export async function executeViaSSE(payload, callbacks, signal = null) {
   const response = await fetch(`${API_BASE_URL}/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    signal
   });
 
   if (!response.ok) {

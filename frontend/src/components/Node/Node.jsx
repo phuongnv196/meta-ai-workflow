@@ -45,14 +45,24 @@ const getGlobalReferences = (nodes) => {
 
 const getParentReferences = (nodeId, nodes, edges) => {
   const incomingEdges = edges.filter(e => e.target === nodeId);
-  const parentIds = new Set(incomingEdges.map(e => e.source));
+  // Sort edges by creation time (index in edges array) to preserve connection order
+  // "nối trước sẽ là start frame, nối sau sẽ là end frame"
+  const parentIds = incomingEdges.map(e => e.source);
   
   const globalRefs = getGlobalReferences(nodes);
-  return globalRefs.filter(r => parentIds.has(r.nodeId));
+  
+  // Return references strictly matching the order they were connected (edge order)
+  const orderedRefs = [];
+  parentIds.forEach(id => {
+    const ref = globalRefs.find(r => r.nodeId === id);
+    if (ref) orderedRefs.push(ref);
+  });
+  
+  return orderedRefs;
 };
 
 const Node = ({ node, transform }) => {
-  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeIds, runSingleNode } = useWorkflowStore();
+  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeIds, runSingleNode, stopWorkflow } = useWorkflowStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [promptValue, setPromptValue] = useState(node.data.prompt || '');
@@ -1300,29 +1310,55 @@ const Node = ({ node, transform }) => {
         <span className="node-icon">{isExecuting ? <Loader2 size={18} className="spin" /> : getIcon()}</span>
         <span className="node-label">{node.data.label}</span>
         <div className="node-actions">
-            <button 
-              className="run-single-btn" 
-              onClick={(e) => {
-                e.stopPropagation();
-                runSingleNode(node.id);
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#10b981',
-                cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '4px',
-                transition: 'all 0.2s',
-                marginRight: '6px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              title="Chạy riêng node này"
-            >
-              <Play size={14} fill="#10b981" />
-            </button>
+            {isExecuting ? (
+              <button 
+                className="run-single-btn" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stopWorkflow();
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  transition: 'all 0.2s',
+                  marginRight: '6px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Dừng node này"
+              >
+                <div style={{ width: '10px', height: '10px', background: '#ef4444', borderRadius: '2px' }} />
+              </button>
+            ) : (
+              <button 
+                className="run-single-btn" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  runSingleNode(node.id);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#10b981',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  transition: 'all 0.2s',
+                  marginRight: '6px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Chạy riêng node này"
+              >
+                <Play size={14} fill="#10b981" />
+              </button>
+            )}
             <button className="delete-btn" onClick={() => removeNode(node.id)}><Trash2 size={14} /></button>
         </div>
       </div>

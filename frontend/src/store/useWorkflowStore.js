@@ -75,6 +75,7 @@ const useWorkflowStore = create((set, get) => ({
   isRunning: false,
   executingNodeIds: [],
   logs: [],
+  abortController: null,
 
   // Workflow management
   workflowId: null,
@@ -140,6 +141,15 @@ const useWorkflowStore = create((set, get) => ({
   addLog: (log) => set((state) => ({ logs: [...state.logs, { id: Date.now(), ...log }] })),
   clearLogs: () => set({ logs: [] }),
 
+  stopWorkflow: () => {
+    const { abortController, addLog } = get();
+    if (abortController) {
+      abortController.abort();
+      addLog({ type: 'error', message: '🛑 Workflow execution stopped by user.' });
+      set({ isRunning: false, executingNodeIds: [], abortController: null });
+    }
+  },
+
   // ── Run all nodes ───────────────────────────────────────────────────
 
   runWorkflow: async () => {
@@ -147,16 +157,18 @@ const useWorkflowStore = create((set, get) => ({
     if (nodes.length === 0) return;
 
     clearLogs();
-    set({ isRunning: true, executingNodeIds: [] });
+    const abortController = new AbortController();
+    set({ isRunning: true, executingNodeIds: [], abortController });
     addLog({ type: 'info', message: 'Starting workflow execution...' });
 
     try {
-      await executeViaSSE({ nodes, edges }, buildSSECallbacks(get, set));
+      await executeViaSSE({ nodes, edges }, buildSSECallbacks(get, set), abortController.signal);
     } catch (error) {
+      if (error.name === 'AbortError') return;
       addLog({ type: 'error', message: `Execution Error: ${error.message}` });
       console.error('Workflow Execution Error:', error);
     } finally {
-      set({ executingNodeIds: [], isRunning: false });
+      set({ executingNodeIds: [], isRunning: false, abortController: null });
     }
   },
 
@@ -178,15 +190,17 @@ const useWorkflowStore = create((set, get) => ({
     }
 
     const targetNode = nodes.find(n => n.id === nextNodeId);
-    set({ isRunning: true, executingNodeIds: [nextNodeId] });
+    const abortController = new AbortController();
+    set({ isRunning: true, executingNodeIds: [nextNodeId], abortController });
     addLog({ type: 'info', message: `🎬 [Step] ${targetNode.data.label}...` });
 
     try {
-      await executeViaSSE({ nodes, edges, targetNodeId: nextNodeId }, buildSSECallbacks(get, set));
+      await executeViaSSE({ nodes, edges, targetNodeId: nextNodeId }, buildSSECallbacks(get, set), abortController.signal);
     } catch (error) {
+      if (error.name === 'AbortError') return;
       addLog({ type: 'error', message: `Lỗi khi chạy step: ${error.message}` });
     } finally {
-      set({ executingNodeIds: [], isRunning: false });
+      set({ executingNodeIds: [], isRunning: false, abortController: null });
     }
   },
 
@@ -197,15 +211,17 @@ const useWorkflowStore = create((set, get) => ({
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    set({ isRunning: true, executingNodeIds: [nodeId] });
+    const abortController = new AbortController();
+    set({ isRunning: true, executingNodeIds: [nodeId], abortController });
     addLog({ type: 'info', message: `🎬 Running: ${node.data.label}...` });
 
     try {
-      await executeViaSSE({ nodes, edges, targetNodeId: nodeId }, buildSSECallbacks(get, set));
+      await executeViaSSE({ nodes, edges, targetNodeId: nodeId }, buildSSECallbacks(get, set), abortController.signal);
     } catch (error) {
+      if (error.name === 'AbortError') return;
       addLog({ type: 'error', message: `Lỗi khi chạy node: ${error.message}` });
     } finally {
-      set({ executingNodeIds: [], isRunning: false });
+      set({ executingNodeIds: [], isRunning: false, abortController: null });
     }
   },
 

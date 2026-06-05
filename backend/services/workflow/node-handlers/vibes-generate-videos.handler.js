@@ -14,8 +14,19 @@ async function handle(node, inputs, context) {
   const config     = { videoModel, ...(node.data.config || {}) };
   const projectId  = node.data.projectId || sharedProjectId;
 
-  // Resolve mediaEntIds for image inputs (auto-upload if needed, exclude text-only sources)
-  const imageInputs = inputs.filter(i => !i.audioUrl && !i.cdnUrl && i.sourceType !== 'text');
+  // Preserve the exact connection order (edge order) to match user intent:
+  // "Hình nối trước sẽ là Start Frame, hình nối sau sẽ là End Frame"
+  // The context.edges array preserves the order of connections made in the UI.
+  const parentEdges = context.edges.filter(e => e.target === node.id);
+  const sortedParents = parentEdges
+    .map(edge => context.nodes.find(n => n.id === edge.source))
+    .filter(Boolean);
+
+  const imageInputs = sortedParents
+    .map(n => context.results[n.id])
+    .filter(i => i && !i.audioUrl && !i.cdnUrl && i.sourceType !== 'text');
+
+  // Resolve mediaEntIds for image inputs (auto-upload if needed)
   const resolvedIds = [];
   for (const inp of imageInputs) {
     const id = await ensureVibesMediaEntId(inp, vibeClient, projectId, log);

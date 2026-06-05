@@ -115,7 +115,7 @@ function getAncestors(targetNodeId, edges) {
  * @param {string} [params.targetNodeId]
  * @param {Function} sendEvent - (eventName, data) => void
  */
-async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
+async function executeWorkflow({ nodes, edges, targetNodeId, signal }, sendEvent) {
   log(`Starting execution for ${nodes.length} nodes and ${edges.length} edges.`);
   sendEvent('workflow_started', { totalNodes: targetNodeId ? 1 : nodes.length });
 
@@ -138,7 +138,7 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
   // Resolve Vibes project once for the entire workflow
   let sharedProjectId = null;
   const hasVibesNode = nodes.some(n => n.type && n.type.startsWith('vibes_'));
-  if (hasVibesNode) {
+  if (hasVibesNode && (!signal || !signal.aborted)) {
     try {
       const projData = await vibeClient.getListProject(1);
       if (projData?.projects?.[0]?.id) {
@@ -171,6 +171,11 @@ async function executeWorkflow({ nodes, edges, targetNodeId }, sendEvent) {
         .map(srcId => executionPromises[srcId]);
 
       await Promise.all(depPromises);
+
+      // Check for abort before starting this node
+      if (signal && signal.aborted) {
+        throw new Error('Workflow execution was stopped by user.');
+      }
 
       // 2. Start execution
       log(`Executing node: ${node.data.label} (${node.type})`);
