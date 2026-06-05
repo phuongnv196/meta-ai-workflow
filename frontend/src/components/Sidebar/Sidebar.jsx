@@ -57,7 +57,7 @@ const Sidebar = () => {
       items: [
         { type: 'extract_frame', icon: <Crop size={18} />, label: 'Extract Frame', color: '#06b6d4' },
         { type: 'merge_videos', icon: <Film size={18} />, label: 'Merge Videos', color: '#84cc16' },
-        { type: 'meta_track', icon: <Music size={18} />, label: 'Track Resolver', color: '#ec4899' },
+        { type: 'add_audio', icon: <Music size={18} />, label: 'Add Audio to Video', color: '#ec4899' },
       ]
     },
     {

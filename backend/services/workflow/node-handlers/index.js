@@ -12,7 +12,7 @@ const handlers = {
   meta_imagine:   require('./meta-imagine.handler'),
   meta_video_gen: require('./meta-video-gen.handler'),
   meta_video:     require('./meta-video.handler'),
-  meta_track:     require('./meta-track.handler'),
+  add_audio:      require('./add-audio.handler'),
   extract_frame:  require('./extract-frame.handler'),
   merge_videos:   require('./merge-videos.handler'),
   // Vibes AI nodes

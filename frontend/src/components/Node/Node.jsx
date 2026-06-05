@@ -570,29 +570,32 @@ const Node = ({ node, transform, isSelected }) => {
             )}
           </div>
         )}
-        {node.type === 'meta_track' && (
-          <div className="node-custom-ui" onMouseDown={(e) => e.stopPropagation()}>
-            <label>Track ID (Optional)</label>
-            <input 
-              type="text" 
-              placeholder="e.g. 609632436429286" 
-              value={node.data.trackId || ''} 
-              onChange={(e) => updateNodeData(node.id, { trackId: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '8px',
-                borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(0, 0, 0, 0.2)',
-                color: '#fff',
-                fontSize: '0.75rem',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
-            <span style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
-              Leave blank to read Track ID from connected text node.
-            </span>
+        {node.type === 'add_audio' && (
+          <div className="node-custom-ui file-drop" style={{ cursor: 'pointer', position: 'relative' }} onMouseDown={e => e.stopPropagation()} onClick={() => {
+            const inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = 'audio/*';
+            inp.onchange = (ev) => {
+              const f = ev.target.files[0]; if (!f) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                const b64 = reader.result.split(',')[1];
+                updateNodeData(node.id, { base64Data: b64, fileName: f.name, mimeType: f.type, audioPreview: reader.result });
+              };
+              reader.readAsDataURL(f);
+            };
+            inp.click();
+          }}>
+            {node.data.audioPreview ? (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <audio src={node.data.audioPreview} controls style={{ width: '100%', height: '32px' }} />
+                <span style={{ fontSize: '0.65rem', color: '#ec4899', wordBreak: 'break-all' }}>Attached: {node.data.fileName}</span>
+              </div>
+            ) : (
+              <>
+                <Mic size={20} />
+                <span style={{ fontSize: '0.75rem' }}>Click to upload audio (or connect Audio node)</span>
+              </>
+            )}
           </div>
         )}
         {node.type === 'extract_frame' && (
@@ -1301,41 +1304,8 @@ const Node = ({ node, transform, isSelected }) => {
                             />
                         </div>
                     </div>
-                ) : node.type === 'meta_track' ? (
-                    <div style={{
-                        padding: '12px',
-                        background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(219, 39, 119, 0.05) 100%)',
-                        border: '1px solid rgba(236, 72, 153, 0.3)',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        boxShadow: '0 4px 16px rgba(236, 72, 153, 0.1)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ec4899', fontWeight: 'bold', fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                            <Music size={14} style={{ animation: 'pulse 1.5s infinite' }} />
-                            <span>META AI TRACK RESOLVED</span>
-                        </div>
-                        
-                        {node.data.largeImageUrl && (
-                            <img 
-                                src={node.data.largeImageUrl} 
-                                alt="Cover Art" 
-                                style={{ width: '100%', borderRadius: '6px', maxHeight: '140px', objectFit: 'cover' }} 
-                            />
-                        )}
-                        
-                        <div>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', lineHeight: '1.2' }}>{node.data.title || 'Unknown Track'}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '2px' }}>{node.data.artist || 'Unknown Artist'}</div>
-                        </div>
-
-                        <audio 
-                            src={resultUrl} 
-                            controls 
-                            style={{ width: '100%', height: '32px', borderRadius: '4px', outline: 'none' }} 
-                        />
-                    </div>
+                ) : node.type === 'add_audio' ? (
+                    <video src={resultUrl} controls style={{ width: '100%', borderRadius: '4px', outline: 'none' }} />
                 ) : node.type === 'vibes_tts' ? (
                     <audio src={resultUrl} controls style={{ width: '100%', height: '32px', borderRadius: '4px', outline: 'none' }} />
                 ) : ((resultUrl.includes('.mp4') || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'merge_videos' || node.type === 'vibes_generate_videos' || node.type === 'vibes_animate') && resultUrl.startsWith('http')) ? (

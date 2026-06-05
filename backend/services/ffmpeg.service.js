@@ -82,4 +82,18 @@ function concatVideos(concatFilePath, outputPath) {
   ], { timeout: 120000 });
 }
 
-module.exports = { getVideoDuration, extractFrame, concatVideos, hasAudio, addSilentAudio };
+function addAudioToVideo(videoUrl, audioUrl, outputPath) {
+  execFileSync('ffmpeg', [
+    '-y',
+    '-i', videoUrl,
+    '-i', audioUrl,
+    '-c:v', 'copy',
+    '-c:a', 'aac',
+    '-map', '0:v:0',
+    '-map', '1:a:0',
+    '-shortest',
+    outputPath,
+  ], { timeout: 120000 });
+}
+
+module.exports = { getVideoDuration, extractFrame, concatVideos, hasAudio, addSilentAudio, addAudioToVideo };

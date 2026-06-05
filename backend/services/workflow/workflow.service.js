@@ -11,7 +11,7 @@ const REFERENCE_NODE_TYPES = [
   'meta_imagine',
   'meta_video_gen',
   'meta_video',
-  'meta_track',
+  'add_audio',
   'extract_frame',
   'merge_videos',
   // Vibes AI nodes that produce referenceable output
