@@ -33,6 +33,30 @@
     }
   }
 
+  .wlp-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .wlp-settings-btn {
+    @include flex-center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid $border;
+    background: rgba(255, 255, 255, 0.05);
+    color: $text-muted;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: $text;
+      transform: rotate(90deg);
+    }
+  }
+
   .wlp-new-btn {
     display: flex;
     align-items: center;

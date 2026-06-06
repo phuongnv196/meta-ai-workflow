@@ -1,10 +1,16 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import useWorkflowStore from '../../store/useWorkflowStore';
 import Node from '../Node/Node';
-import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward, Save, SaveAll, ArrowLeft, MessageSquare, Image as ImageIcon, Video, Upload, Crop, Film, Music, FileText, Mic, Layers, Clapperboard, PersonStanding, Zap, Database, PackagePlus, Trash2, X } from 'lucide-react';
+import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward, Save, SaveAll, ArrowLeft, MessageSquare, Image as ImageIcon, Video, Upload, Crop, Film, Music, FileText, Mic, Layers, Clapperboard, PersonStanding, Zap, Database, PackagePlus, Trash2, X, Brain, Globe, Braces, Type, Timer, Repeat, GitBranch } from 'lucide-react';
 import './WorkflowCanvas.scss';
 
 const NODE_CATEGORIES = [
+  {
+    name: 'AI Models',
+    items: [
+      { type: 'universal_llm', icon: <Brain size={14} />, label: 'Universal LLM', color: '#8b5cf6' },
+    ]
+  },
   {
     name: 'Meta AI Core',
     items: [
@@ -39,10 +45,24 @@ const NODE_CATEGORIES = [
     ]
   },
   {
-    name: 'Logic',
+    name: 'Flow Control',
     items: [
-      { type: 'condition', icon: <Zap size={14} />, label: 'Condition', color: '#f43f5e' },
-      { type: 'database', icon: <Database size={14} />, label: 'Store Result', color: '#6366f1' },
+      { type: 'condition', icon: <GitBranch size={14} />, label: 'Condition (If/Else)', color: '#f43f5e' },
+      { type: 'delay', icon: <Timer size={14} />, label: 'Delay', color: '#fbbf24' },
+      { type: 'loop_node', icon: <Repeat size={14} />, label: 'Loop (ForEach)', color: '#f97316' },
+    ]
+  },
+  {
+    name: 'Data & Utils',
+    items: [
+      { type: 'text_transform', icon: <Type size={14} />, label: 'Text Transform', color: '#a78bfa' },
+      { type: 'json_extractor', icon: <Braces size={14} />, label: 'JSON Extractor', color: '#2dd4bf' },
+    ]
+  },
+  {
+    name: 'Integrations',
+    items: [
+      { type: 'http_request', icon: <Globe size={14} />, label: 'HTTP Request', color: '#60a5fa' },
     ]
   }
 ];
@@ -265,6 +285,17 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
     const nodeHeight = node.dimensions?.height || 150;
 
     let portY = node.position.y + nodeHeight / 2;
+
+    // Condition node: 2 output ports (true/false)
+    if (node.type === 'condition') {
+      if (type === 'out' && handleId) {
+        const handles = ['true', 'false'];
+        const index = handles.indexOf(handleId);
+        if (index !== -1) {
+          portY = node.position.y + ((index + 1) * nodeHeight) / (handles.length + 1);
+        }
+      }
+    }
 
     if (node.type === 'custom_node') {
       const handles = type === 'out' ? node.data.exposedOutputs : node.data.exposedInputs;

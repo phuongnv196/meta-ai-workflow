@@ -178,6 +178,12 @@ async function executeWorkflow({ nodes, edges, targetNodeId, signal }, sendEvent
         throw new Error('Workflow execution was stopped by user.');
       }
 
+      // Check if this node was already skipped by condition branch logic
+      if (results[nodeId] && results[nodeId]._skipped) {
+        log(`  Skipping node ${nodeId} (${node.data.label}) — condition branch not taken.`);
+        return;
+      }
+
       // 2. Start execution
       log(`Executing node: ${node.data.label} (${node.type})`);
       sendEvent('node_started', { nodeId, label: node.data.label, type: node.type });
@@ -228,6 +234,51 @@ async function executeWorkflow({ nodes, edges, targetNodeId, signal }, sendEvent
       results[nodeId] = result;
       log(`  Node ${nodeId} finished successfully.`);
       sendEvent('node_completed', { nodeId, label: node.data.label, type: node.type, result });
+
+      // ── Condition branch-skip logic ──
+      // After a condition node executes, mark nodes on the non-matching branch as SKIPPED
+      if (node.type === 'condition' && result && result.branchId) {
+        const matchingBranch = result.branchId; // 'true' or 'false'
+        const nonMatchingBranch = matchingBranch === 'true' ? 'false' : 'true';
+
+        // Find downstream edges from this condition node
+        const downstreamEdges = edges.filter(e => e.source === nodeId);
+
+        // Edges on the non-matching branch (identified by sourceHandle)
+        const skippedEdges = downstreamEdges.filter(e => e.sourceHandle === nonMatchingBranch);
+        
+        // Collect all nodes reachable ONLY via the non-matching branch
+        const skippedNodeIds = new Set();
+        const queue = skippedEdges.map(e => e.target);
+
+        while (queue.length > 0) {
+          const currentId = queue.shift();
+          if (skippedNodeIds.has(currentId)) continue;
+
+          // Check if this node also has incoming edges from the matching branch
+          // If so, don't skip it (it gets data from both branches)
+          const allIncoming = edges.filter(e => e.target === currentId);
+          const hasMatchingBranchInput = allIncoming.some(e => {
+            if (e.source === nodeId) return e.sourceHandle === matchingBranch;
+            return !skippedNodeIds.has(e.source); // Has input from a non-skipped node
+          });
+
+          if (hasMatchingBranchInput && allIncoming.some(e => e.source !== nodeId || e.sourceHandle !== nonMatchingBranch)) {
+            continue; // Don't skip — this node has valid inputs from the matching branch
+          }
+
+          skippedNodeIds.add(currentId);
+          results[currentId] = { _skipped: true, branchId: nonMatchingBranch };
+          sendEvent('node_skipped', { nodeId: currentId, label: nodes.find(n => n.id === currentId)?.data?.label, branchId: nonMatchingBranch });
+
+          // Continue collecting downstream
+          edges.filter(e => e.source === currentId).forEach(e => queue.push(e.target));
+        }
+
+        if (skippedNodeIds.size > 0) {
+          log(`  Condition branch "${nonMatchingBranch}" skipped ${skippedNodeIds.size} downstream node(s).`);
+        }
+      }
     })();
   }
 

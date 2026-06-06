@@ -32,6 +32,14 @@ function buildSSECallbacks(get, set) {
   function handleNodeResult(nodeId, result, label) {
     const updateData = { error: null, ...result };
     if (result.videoUrl) updateData.resultUrl = result.videoUrl;
+    
+    // Protect HTTP Request node's request body configuration from being overwritten by the response body
+    const node = get().nodes?.find(n => n.id === nodeId);
+    if (node && node.type === 'http_request') {
+      delete updateData.body;
+      updateData.responseBody = result.body;
+    }
+    
     updateNodeData(nodeId, updateData);
 
     if (result.videoUrl) {
@@ -63,6 +71,9 @@ function buildSSECallbacks(get, set) {
     },
     onWorkflowFailed: (data) => {
       throw new Error(data.error || 'Execution failed');
+    },
+    onNodeSkipped: (data) => {
+      addLog({ type: 'info', message: `⏭ Skipped: ${data.label} (branch: ${data.branchId})` });
     },
   };
 }
@@ -210,7 +221,7 @@ const useWorkflowStore = create((set, get) => ({
     const order = topologicalSort(nodes, edges);
     const nextNodeId = order.find(id => {
       const n = nodes.find(nd => nd.id === id);
-      return n && !n.data.resultUrl && !n.data.error;
+      return n && !n.data.resultUrl && !n.data.text && !n.data.error;
     });
 
     if (!nextNodeId) {

@@ -9,6 +9,7 @@ const uploadRoutes = require('./routes/upload.routes');
 const executeRoutes = require('./routes/execute.routes');
 const workflowRoutes = require('./routes/workflow-management.routes');
 const customNodeRoutes = require('./routes/custom-node.routes');
+const settingsRoutes = require('./routes/settings.routes');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/upload', uploadRoutes);
 app.use('/execute', executeRoutes);
 app.use('/workflows', workflowRoutes);
 app.use('/custom-nodes', customNodeRoutes);
+app.use('/settings', settingsRoutes);
 
 // Global error handler (must be last)
 app.use(errorHandler);

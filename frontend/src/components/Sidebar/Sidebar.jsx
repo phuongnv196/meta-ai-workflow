@@ -22,7 +22,14 @@ import {
   Speaker,
   PersonStanding,
   Package,
-  Trash2
+  Trash2,
+  Brain,
+  Globe,
+  Braces,
+  Type,
+  Timer,
+  Repeat,
+  GitBranch
 } from 'lucide-react';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import './Sidebar.scss';
@@ -44,6 +51,12 @@ const Sidebar = () => {
 
   const nodeCategories = [
     {
+      name: 'AI Models',
+      items: [
+        { type: 'universal_llm', icon: <Brain size={18} />, label: 'Universal LLM', color: '#8b5cf6' },
+      ]
+    },
+    {
       name: 'Meta AI Core',
       items: [
         { type: 'meta_chat', icon: <MessageSquare size={18} />, label: 'Meta Chat', color: '#38bdf8' },
@@ -64,7 +77,6 @@ const Sidebar = () => {
       name: 'Inputs & Data',
       items: [
         { type: 'text_input', icon: <FileText size={18} />, label: 'Text Prompt', color: '#818cf8' },
-        
       ]
     },
     {
@@ -78,12 +90,26 @@ const Sidebar = () => {
       ]
     },
     {
-      name: 'Logic',
+      name: 'Flow Control',
       items: [
-        { type: 'condition', icon: <Zap size={18} />, label: 'Condition', color: '#f43f5e' },
-        { type: 'database', icon: <Database size={18} />, label: 'Store Result', color: '#6366f1' },
+        { type: 'condition', icon: <GitBranch size={18} />, label: 'Condition (If/Else)', color: '#f43f5e' },
+        { type: 'delay', icon: <Timer size={18} />, label: 'Delay', color: '#fbbf24' },
+        { type: 'loop_node', icon: <Repeat size={18} />, label: 'Loop (ForEach)', color: '#f97316' },
       ]
-    }
+    },
+    {
+      name: 'Data & Utils',
+      items: [
+        { type: 'text_transform', icon: <Type size={18} />, label: 'Text Transform', color: '#a78bfa' },
+        { type: 'json_extractor', icon: <Braces size={18} />, label: 'JSON Extractor', color: '#2dd4bf' },
+      ]
+    },
+    {
+      name: 'Integrations',
+      items: [
+        { type: 'http_request', icon: <Globe size={18} />, label: 'HTTP Request', color: '#60a5fa' },
+      ]
+    },
   ];
 
   const onDragStart = (e, type, label) => {

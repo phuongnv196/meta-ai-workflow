@@ -168,6 +168,24 @@
         margin-bottom: 0.4rem;
       }
 
+      select {
+        width: 100% !important;
+        padding: 6px 10px !important;
+        border-radius: 6px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: #0f172a !important; /* Slate 900 */
+        color: #f8fafc !important; /* Slate 50 */
+        font-size: 0.75rem !important;
+        outline: none !important;
+        cursor: pointer !important;
+
+        option {
+          background: #1e293b !important; /* Slate 800 */
+          color: #f8fafc !important;
+          padding: 8px !important;
+        }
+      }
+
       textarea {
         width: 100%;
         min-height: 60px;

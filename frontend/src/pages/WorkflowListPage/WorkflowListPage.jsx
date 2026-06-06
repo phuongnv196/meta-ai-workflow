@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import useWorkflowListStore from '../../store/useWorkflowListStore';
 import WorkflowCard from '../../components/WorkflowCard/WorkflowCard';
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
-import { Plus, Search, SortAsc, SortDesc } from 'lucide-react';
+import SettingsModal from '../../components/SettingsModal/SettingsModal';
+import { Plus, Search, SortAsc, SortDesc, Settings } from 'lucide-react';
 import './WorkflowListPage.scss';
 
 const WorkflowListPage = () => {
@@ -17,6 +18,7 @@ const WorkflowListPage = () => {
 
   const [searchInput, setSearchInput] = useState(search);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     fetchWorkflows();
@@ -51,10 +53,15 @@ const WorkflowListPage = () => {
           <h1>Vibes AI Flow</h1>
           <span className="wlp-count">{total} workflow{total !== 1 ? 's' : ''}</span>
         </div>
-        <button className="wlp-new-btn" onClick={() => navigate('/canvas')}>
-          <Plus size={18} />
-          <span>New Workflow</span>
-        </button>
+        <div className="wlp-header-actions">
+          <button className="wlp-settings-btn" onClick={() => setShowSettings(true)} title="AI Provider Settings">
+            <Settings size={18} />
+          </button>
+          <button className="wlp-new-btn" onClick={() => navigate('/canvas')}>
+            <Plus size={18} />
+            <span>New Workflow</span>
+          </button>
+        </div>
       </header>
 
       <div className="wlp-filters">
@@ -126,6 +133,10 @@ const WorkflowListPage = () => {
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
         />
+      )}
+
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

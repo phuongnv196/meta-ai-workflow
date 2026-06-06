@@ -1,10 +1,11 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
 import useWorkflowStore from '../../store/useWorkflowStore';
-import { 
-  Settings, Trash2, MessageSquare, Image as ImageIcon, Video, 
+import {
+  Settings, Trash2, MessageSquare, Image as ImageIcon, Video,
   FileText, Zap, ChevronRight, Loader2, ExternalLink, Music, Crop, Film, Play,
   Upload, Mic, Wand2, Layers, Clapperboard, Speaker, PersonStanding,
-  PackagePlus, Package, Pencil, Ungroup
+  PackagePlus, Package, Pencil, Ungroup,
+  Brain, Globe, Braces, Type, Timer, Repeat, GitBranch
 } from 'lucide-react';
 import { REFERENCE_NODE_TYPES } from '../../constants';
 import { API_BASE_URL } from '../../config';
@@ -49,16 +50,16 @@ const getParentReferences = (nodeId, nodes, edges) => {
   // Sort edges by creation time (index in edges array) to preserve connection order
   // "nối trước sẽ là start frame, nối sau sẽ là end frame"
   const parentIds = incomingEdges.map(e => e.source);
-  
+
   const globalRefs = getGlobalReferences(nodes);
-  
+
   // Return references strictly matching the order they were connected (edge order)
   const orderedRefs = [];
   parentIds.forEach(id => {
     const ref = globalRefs.find(r => r.nodeId === id);
     if (ref) orderedRefs.push(ref);
   });
-  
+
   return orderedRefs;
 };
 
@@ -77,11 +78,11 @@ const Node = ({ node, transform, isSelected }) => {
   const [cursorIndex, setCursorIndex] = useState(0);
   const nodeRef = useRef(null);
   const fileInputRef = useRef(null);
- 
+
   const isExecuting = executingNodeIds?.includes(node.id);
   const resultUrl = node.data.resultUrl;
   const previewUrl = node.data.previewUrl;
- 
+
   useLayoutEffect(() => {
     if (!nodeRef.current) return;
 
@@ -93,9 +94,9 @@ const Node = ({ node, transform, isSelected }) => {
       const actualHeight = nodeRef.current.offsetHeight;
 
       if (node.dimensions?.width !== actualWidth || node.dimensions?.height !== actualHeight) {
-        updateNodeDimensions(node.id, { 
-          width: actualWidth, 
-          height: actualHeight 
+        updateNodeDimensions(node.id, {
+          width: actualWidth,
+          height: actualHeight
         });
       }
     });
@@ -103,48 +104,48 @@ const Node = ({ node, transform, isSelected }) => {
     observer.observe(nodeRef.current);
     return () => observer.disconnect();
   }, [node.id, node.dimensions?.width, node.dimensions?.height, updateNodeDimensions]);
- 
+
   const onMouseDown = (e) => {
     if (e.target.closest('.delete-btn') || e.target.closest('.port') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.result-view') || e.target.closest('.file-drop')) return;
-    
+
     setIsDragging(true);
     const startX = e.clientX / transform.scale - node.position.x;
     const startY = e.clientY / transform.scale - node.position.y;
- 
+
     const onMouseMove = (moveEvent) => {
       updateNodePosition(node.id, {
         x: moveEvent.clientX / transform.scale - startX,
         y: moveEvent.clientY / transform.scale - startY,
       });
     };
- 
+
     const onMouseUp = () => {
       setIsDragging(false);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
- 
+
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
   };
- 
+
   const onPortMouseDown = (e, type, handleId = null) => {
     e.stopPropagation();
     if (type === 'out' && nodeRef.current) {
       const portElement = e.currentTarget;
       const centerY = node.position.y + portElement.offsetTop + (portElement.offsetHeight / 2 || 6);
-      
+
       setActiveConnection({
         source: node.id,
         sourceHandle: handleId,
-        startX: node.position.x + nodeRef.current.offsetWidth, 
+        startX: node.position.x + nodeRef.current.offsetWidth,
         startY: centerY,
         currentX: node.position.x + nodeRef.current.offsetWidth,
         currentY: centerY,
       });
     }
   };
- 
+
   const onPortMouseUp = (e, type, handleId = null) => {
     if (type === 'in' && activeConnection && activeConnection.source !== node.id) {
       addEdge({
@@ -200,7 +201,7 @@ const Node = ({ node, transform, isSelected }) => {
     };
     reader.readAsDataURL(file);
   };
- 
+
   const getIcon = () => {
     switch (node.type) {
       case 'meta_chat': return <MessageSquare size={18} color="#38bdf8" />;
@@ -212,19 +213,25 @@ const Node = ({ node, transform, isSelected }) => {
       case 'merge_videos': return <Film size={18} color="#84cc16" />;
       case 'text_input': return <FileText size={18} color="#818cf8" />;
       case 'file_input': return <Upload size={18} color="#38bdf8" />;
-      case 'condition': return <Zap size={18} color="#f43f5e" />;
-      case 'vibes_upload_image':     return <Upload size={18} color="#38bdf8" />;
-      case 'vibes_upload_audio':     return <Mic size={18} color="#f472b6" />;
+      case 'condition': return <GitBranch size={18} color="#f43f5e" />;
+      case 'universal_llm': return <Brain size={18} color="#8b5cf6" />;
+      case 'delay': return <Timer size={18} color="#fbbf24" />;
+      case 'http_request': return <Globe size={18} color="#60a5fa" />;
+      case 'json_extractor': return <Braces size={18} color="#2dd4bf" />;
+      case 'text_transform': return <Type size={18} color="#a78bfa" />;
+      case 'loop_node': return <Repeat size={18} color="#f97316" />;
+      case 'vibes_upload_image': return <Upload size={18} color="#38bdf8" />;
+      case 'vibes_upload_audio': return <Mic size={18} color="#f472b6" />;
       case 'vibes_generate_prompts': return <Wand2 size={18} color="#a78bfa" />;
-      case 'vibes_generate_images':  return <Layers size={18} color="#34d399" />;
-      case 'vibes_generate_videos':  return <Clapperboard size={18} color="#fb923c" />;
+      case 'vibes_generate_images': return <Layers size={18} color="#34d399" />;
+      case 'vibes_generate_videos': return <Clapperboard size={18} color="#fb923c" />;
       // case 'vibes_tts':              return <Speaker size={18} color="#60a5fa" />;
-      case 'vibes_animate':          return <PersonStanding size={18} color="#f87171" />;
-      case 'custom_node':            return <Package size={18} color={node.data.color || '#f59e0b'} />;
+      case 'vibes_animate': return <PersonStanding size={18} color="#f87171" />;
+      case 'custom_node': return <Package size={18} color={node.data.color || '#f59e0b'} />;
       default: return <Settings size={18} color="#94a3b8" />;
     }
   };
- 
+
   const handleSelectSuggestion = (s) => {
     if (!s) return;
     const textBeforeAt = promptValue.slice(0, cursorIndex - suggestionQuery.length - 1);
@@ -321,7 +328,7 @@ const Node = ({ node, transform, isSelected }) => {
                             updateNodeData(node.id, { subNodes: newSubNodes });
                           }}
                           style={{
-                            flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', 
+                            flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
                             borderRadius: '4px', color: '#e2e8f0', fontSize: '0.75rem', padding: '2px 6px', outline: 'none'
                           }}
                           title="Tên node con"
@@ -366,7 +373,7 @@ const Node = ({ node, transform, isSelected }) => {
           {node.data.error && (
             <div className="node-custom-ui error-view" onMouseDown={e => e.stopPropagation()} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
               <label style={{ color: '#991b1b', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>Execution Error</label>
-              <span style={{ lineHeight: '1.4', display: 'block' }}>{node.data.error}</span>
+              <span style={{ lineHeight: '1.4', display: 'block', overflowWrap: 'break-word' }}>{node.data.error}</span>
             </div>
           )}
         </>
@@ -375,39 +382,39 @@ const Node = ({ node, transform, isSelected }) => {
 
     return (
       <>
-        {(node.type === 'text_input' || node.type === 'meta_chat' || node.type === 'meta_imagine' || node.type === 'meta_video_gen' || node.type === 'meta_video') && (
+        {(node.type === 'text_input' || node.type === 'meta_chat' || node.type === 'meta_imagine' || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'universal_llm') && (
           <div className="node-custom-ui" style={{ position: 'relative' }}>
             <label>Prompt</label>
-            <textarea 
+            <textarea
               className={`node-textarea-${node.id}`}
-              placeholder="Type something..." 
-              value={promptValue} 
+              placeholder="Type something..."
+              value={promptValue}
               onChange={(e) => {
-                  const val = e.target.value;
-                  setPromptValue(val);
-                  updateNodeData(node.id, { prompt: val });
+                const val = e.target.value;
+                setPromptValue(val);
+                updateNodeData(node.id, { prompt: val });
 
-                  // Tìm gợi ý @reference_
-                  const selectionStart = e.target.selectionStart;
-                  const textBeforeCursor = val.slice(0, selectionStart);
-                  const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+                // Tìm gợi ý @reference_
+                const selectionStart = e.target.selectionStart;
+                const textBeforeCursor = val.slice(0, selectionStart);
+                const lastAtIndex = textBeforeCursor.lastIndexOf('@');
 
-                  if (lastAtIndex !== -1 && lastAtIndex >= textBeforeCursor.lastIndexOf(' ')) {
-                    const query = textBeforeCursor.slice(lastAtIndex + 1);
-                    setSuggestionQuery(query);
-                    setCursorIndex(selectionStart);
-                    
-                    const refs = getParentReferences(node.id, nodes, edges);
-                    const matchingRefs = refs.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
-                    if (matchingRefs.length > 0) {
-                      setSuggestionsList(matchingRefs);
-                      setShowSuggestions(true);
-                    } else {
-                      setShowSuggestions(false);
-                    }
+                if (lastAtIndex !== -1 && lastAtIndex >= textBeforeCursor.lastIndexOf(' ')) {
+                  const query = textBeforeCursor.slice(lastAtIndex + 1);
+                  setSuggestionQuery(query);
+                  setCursorIndex(selectionStart);
+
+                  const refs = getParentReferences(node.id, nodes, edges);
+                  const matchingRefs = refs.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
+                  if (matchingRefs.length > 0) {
+                    setSuggestionsList(matchingRefs);
+                    setShowSuggestions(true);
                   } else {
                     setShowSuggestions(false);
                   }
+                } else {
+                  setShowSuggestions(false);
+                }
               }}
               onMouseDown={(e) => e.stopPropagation()}
             />
@@ -426,11 +433,11 @@ const Node = ({ node, transform, isSelected }) => {
                 padding: '4px',
                 marginTop: '2px'
               }}
-              onMouseDown={e => e.preventDefault()}
+                onMouseDown={e => e.preventDefault()}
               >
                 {suggestionsList.map(s => (
-                  <div 
-                    key={s.name} 
+                  <div
+                    key={s.name}
                     onClick={() => {
                       const textBeforeAt = promptValue.slice(0, cursorIndex - suggestionQuery.length - 1);
                       const textAfterCursor = promptValue.slice(cursorIndex);
@@ -438,7 +445,7 @@ const Node = ({ node, transform, isSelected }) => {
                       setPromptValue(newValue);
                       updateNodeData(node.id, { prompt: newValue });
                       setShowSuggestions(false);
-                      
+
                       setTimeout(() => {
                         const textarea = document.querySelector(`.node-textarea-${node.id}`);
                         if (textarea) {
@@ -501,7 +508,7 @@ const Node = ({ node, transform, isSelected }) => {
                           fontSize: '0.65rem',
                           color: '#e2e8f0'
                         }}
-                        title={`${r.label} (${r.filename})`}
+                          title={`${r.label} (${r.filename})`}
                         >
                           {r.preview && (
                             <img src={r.preview} alt="ref" style={{ width: '12px', height: '12px', borderRadius: '2px', objectFit: 'cover' }} />
@@ -518,7 +525,7 @@ const Node = ({ node, transform, isSelected }) => {
 
             {/* MODE_FAST toggle for Meta Chat node */}
             {node.type === 'meta_chat' && (
-              <div 
+              <div
                 onMouseDown={e => e.stopPropagation()}
                 style={{
                   marginTop: '8px',
@@ -555,9 +562,9 @@ const Node = ({ node, transform, isSelected }) => {
                     boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
                   }} />
                 </div>
-                <span style={{ 
-                  fontSize: '0.7rem', 
-                  fontWeight: '600', 
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: '600',
                   color: node.data.modeFast ? '#facc15' : '#94a3b8',
                   letterSpacing: '0.3px'
                 }}>
@@ -566,6 +573,107 @@ const Node = ({ node, transform, isSelected }) => {
                 <span style={{ fontSize: '0.6rem', color: '#64748b', marginLeft: 'auto' }}>
                   {node.data.modeFast ? 'Text-only, faster response' : 'Off'}
                 </span>
+              </div>
+            )}
+
+            {/* Universal LLM specific controls */}
+            {node.type === 'universal_llm' && (
+              <div
+                onMouseDown={e => e.stopPropagation()}
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}
+              >
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>Provider</label>
+                    <select
+                      value={node.data.provider || 'openai'}
+                      onChange={e => updateNodeData(node.id, { provider: e.target.value, model: '' })}
+                      style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
+                    >
+                      <option value="openai">OpenAI</option>
+                      <option value="gemini">Google Gemini</option>
+                      <option value="anthropic">Anthropic Claude</option>
+                      <option value="ollama">Ollama (Local)</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>Model</label>
+                    <select
+                      value={
+                        !node.data.model ? '' :
+                          ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'mimo-v2-omni',
+                            'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash',
+                            'claude-sonnet-4-20250514', 'claude-haiku-4-20250414', 'claude-3-5-sonnet-20241022',
+                            'llama3', 'mistral', 'codellama', 'phi3'].includes(node.data.model) ? node.data.model : 'custom'
+                      }
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === 'custom') {
+                          updateNodeData(node.id, { model: 'custom-model' });
+                        } else {
+                          updateNodeData(node.id, { model: val });
+                        }
+                      }}
+                      style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
+                    >
+                      <option value="">Auto</option>
+                      {({
+                        openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'mimo-v2-omni'],
+                        gemini: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'],
+                        anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-4-20250414', 'claude-3-5-sonnet-20241022'],
+                        ollama: ['llama3', 'mistral', 'codellama', 'phi3'],
+                      }[node.data.provider || 'openai'] || []).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                      <option value="custom">Custom...</option>
+                    </select>
+                  </div>
+                </div>
+                {!['', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'mimo-v2-omni',
+                  'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash',
+                  'claude-sonnet-4-20250514', 'claude-haiku-4-20250414', 'claude-3-5-sonnet-20241022',
+                  'llama3', 'mistral', 'codellama', 'phi3'].includes(node.data.model ?? '') && (
+                    <div>
+                      <label style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>Custom Model Name</label>
+                      <input
+                        type="text"
+                        value={node.data.model || ''}
+                        onChange={e => updateNodeData(node.id, { model: e.target.value })}
+                        placeholder="e.g. mimo-v2-omni"
+                        style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  )}
+                <div>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px', display: 'block' }}>System Prompt <span style={{ color: '#64748b', fontWeight: 'normal', textTransform: 'none' }}>(optional)</span></label>
+                  <textarea
+                    placeholder="You are a helpful assistant..."
+                    value={node.data.systemPrompt || ''}
+                    onChange={e => updateNodeData(node.id, { systemPrompt: e.target.value })}
+                    style={{ width: '100%', minHeight: '40px', padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#f1f5f9', fontSize: '0.75rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                    onMouseDown={e => e.stopPropagation()}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Temperature: {node.data.temperature ?? 0.7}</label>
+                    <input
+                      type="range" min="0" max="2" step="0.1"
+                      value={node.data.temperature ?? 0.7}
+                      onChange={e => updateNodeData(node.id, { temperature: parseFloat(e.target.value) })}
+                      style={{ width: '100%', accentColor: '#8b5cf6' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Max Tokens</label>
+                    <input
+                      type="number" min="1" max="128000"
+                      value={node.data.maxTokens ?? 2048}
+                      onChange={e => updateNodeData(node.id, { maxTokens: parseInt(e.target.value) || 2048 })}
+                      style={{ width: '100%', padding: '4px 6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -625,12 +733,12 @@ const Node = ({ node, transform, isSelected }) => {
             {node.data.frameType === 'custom' && (
               <>
                 <label style={{ display: 'block', marginBottom: '4px' }}>Time Offset (Seconds)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   step="0.1"
                   min="0"
-                  placeholder="e.g. 2.5" 
-                  value={node.data.timeOffset === undefined ? 0 : node.data.timeOffset} 
+                  placeholder="e.g. 2.5"
+                  value={node.data.timeOffset === undefined ? 0 : node.data.timeOffset}
                   onChange={(e) => updateNodeData(node.id, { timeOffset: parseFloat(e.target.value) || 0 })}
                   style={{
                     width: '100%',
@@ -677,36 +785,36 @@ const Node = ({ node, transform, isSelected }) => {
           </div>
         )}
         {node.type === 'file_input' && (
-            <div 
-              className="node-custom-ui file-drop" 
-              onClick={() => fileInputRef.current.click()}
-              onMouseDown={(e) => e.stopPropagation()}
-              style={{ cursor: 'pointer', position: 'relative' }}
-            >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                accept="image/*" 
-                style={{ display: 'none' }} 
-              />
-              {isUploading ? (
-                <>
-                  <Loader2 size={20} className="spin" />
-                  <span>Uploading to Meta AI...</span>
-                </>
-              ) : previewUrl ? (
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                  <img src={previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '500px', objectFit: 'cover' }} />
-                  <span style={{ fontSize: '0.65rem', color: '#10b981', wordBreak: 'break-all' }}>Attached: {node.data.filename}</span>
-                </div>
-              ) : (
-                <>
-                  <Upload size={20} />
-                  <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
-                </>
-              )}
-            </div>
+          <div
+            className="node-custom-ui file-drop"
+            onClick={() => fileInputRef.current.click()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{ cursor: 'pointer', position: 'relative' }}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              style={{ display: 'none' }}
+            />
+            {isUploading ? (
+              <>
+                <Loader2 size={20} className="spin" />
+                <span>Uploading to Meta AI...</span>
+              </>
+            ) : previewUrl ? (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <img src={previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '500px', objectFit: 'cover' }} />
+                <span style={{ fontSize: '0.65rem', color: '#10b981', wordBreak: 'break-all' }}>Attached: {node.data.filename}</span>
+              </div>
+            ) : (
+              <>
+                <Upload size={20} />
+                <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
+              </>
+            )}
+          </div>
         )}
 
         {/* ── Vibes AI: Upload Image ── */}
@@ -852,7 +960,7 @@ const Node = ({ node, transform, isSelected }) => {
                     const query = textBeforeCursor.slice(lastAtIndex + 1);
                     setSuggestionQuery(query);
                     setCursorIndex(selectionStart);
-                    
+
                     const refs = getParentReferences(node.id, nodes, edges);
                     const matchingRefs = refs.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
                     if (matchingRefs.length > 0) {
@@ -976,7 +1084,7 @@ const Node = ({ node, transform, isSelected }) => {
                     const query = textBeforeCursor.slice(lastAtIndex + 1);
                     setSuggestionQuery(query);
                     setCursorIndex(selectionStart);
-                    
+
                     const refs = getParentReferences(node.id, nodes, edges);
                     const matchingRefs = refs.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
                     if (matchingRefs.length > 0) {
@@ -1050,7 +1158,7 @@ const Node = ({ node, transform, isSelected }) => {
                           if (i === 0) frameLabel = 'Start Frame';
                           else if (i === 1) frameLabel = 'End Frame';
                           else frameLabel = 'Extra (Ignored)';
-                          
+
                           return (
                             <div key={r.name} style={{
                               display: 'flex',
@@ -1133,7 +1241,7 @@ const Node = ({ node, transform, isSelected }) => {
                     const query = textBeforeCursor.slice(lastAtIndex + 1);
                     setSuggestionQuery(query);
                     setCursorIndex(selectionStart);
-                    
+
                     const refs = getParentReferences(node.id, nodes, edges);
                     const matchingRefs = refs.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
                     if (matchingRefs.length > 0) {
@@ -1209,7 +1317,7 @@ const Node = ({ node, transform, isSelected }) => {
                         {refs.map((r, i) => {
                           const isAudio = r.name === audioRef?.name;
                           const isAvatar = !isAudio && imageRefs[0]?.name === r.name;
-                          
+
                           let labelText = isAudio ? 'Audio Source' : (isAvatar ? 'Avatar Face' : 'Ignored');
                           let tagColor = isAudio ? '#f472b6' : (isAvatar ? '#10b981' : '#94a3b8');
 
@@ -1259,144 +1367,384 @@ const Node = ({ node, transform, isSelected }) => {
             /> */}
           </div>
         )}
-        
-        {(resultUrl || (node.type === 'meta_chat' && node.data.text)) && (
-            <div className="node-custom-ui result-view" onMouseDown={e => e.stopPropagation()}>
-                {node.type === 'meta_chat' && node.data.text ? (
-                    <div style={{
-                        padding: '12px',
-                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(14, 165, 233, 0.05) 100%)',
-                        border: '1px solid rgba(56, 189, 248, 0.3)',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        boxShadow: '0 4px 16px rgba(56, 189, 248, 0.1)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38bdf8', fontWeight: 'bold', fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                            <MessageSquare size={14} />
-                            <span>META AI RESPONSE</span>
-                        </div>
-                        <div style={{
-                            fontSize: '0.85rem',
-                            color: '#e2e8f0',
-                            lineHeight: '1.5',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                            maxHeight: '100px'
-                        }}
-                        title={node.data.text}
-                        >
-                            <textarea
-                                value={node.data.text}
-                                readOnly
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#e2e8f0',
-                                    fontSize: '0.85rem',
-                                    maxHeight: '100px'
-                                }}
-                            />
-                        </div>
-                    </div>
-                ) : node.type === 'add_audio' ? (
-                    <video src={resultUrl} controls style={{ width: '100%', borderRadius: '4px', outline: 'none' }} />
-                ) : node.type === 'vibes_tts' ? (
-                    <audio src={resultUrl} controls style={{ width: '100%', height: '32px', borderRadius: '4px', outline: 'none' }} />
-                ) : ((resultUrl.includes('.mp4') || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'merge_videos' || node.type === 'vibes_generate_videos' || node.type === 'vibes_animate') && resultUrl.startsWith('http')) ? (
-                    <video 
-                        src={resultUrl} 
 
-                        controls 
-                        autoPlay 
-                        loop 
-                        muted 
-                        playsInline
-                        style={{ width: '100%', borderRadius: '6px', background: '#000', display: 'block', objectFit: 'cover' }} 
-                    />
-                ) : resultUrl.startsWith('fbid://') ? (
-                    <div style={{ 
-                        padding: '14px', 
-                        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(124, 58, 237, 0.05) 100%)', 
-                        border: '1px solid rgba(168, 85, 247, 0.3)', 
-                        borderRadius: '8px', 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        gap: '8px',
-                        boxShadow: '0 4px 16px rgba(168, 85, 247, 0.1)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a855f7', fontWeight: 'bold', fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                            <Video size={14} style={{ animation: 'pulse 1.5s infinite' }} />
-                            <span>META AI VIDEO READY</span>
-                        </div>
-                        
-                        <div style={{ fontSize: '0.65rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-                            Video đã được sinh thành công trên cụm GPU của Meta AI!
-                        </div>
-                        
-                        <div style={{ 
-                            padding: '6px 8px', 
-                            background: 'rgba(0,0,0,0.3)', 
-                            borderRadius: '4px', 
-                            fontSize: '0.6rem', 
-                            color: '#94a3b8', 
-                            fontFamily: 'monospace',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            wordBreak: 'break-all'
-                        }}>
-                            fbid: {resultUrl.replace('fbid://', '')}
-                        </div>
+        {(resultUrl || (['meta_chat', 'universal_llm', 'http_request', 'json_extractor', 'text_transform'].includes(node.type) && node.data.text)) && (
+          <div className="node-custom-ui result-view" onMouseDown={e => e.stopPropagation()}>
+            {node.type === 'universal_llm' && node.data.text ? (
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(124, 58, 237, 0.05) 100%)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                boxShadow: '0 4px 16px rgba(139, 92, 246, 0.1)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8b5cf6', fontWeight: 'bold', fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                  <Brain size={14} />
+                  <span>{(node.data.provider || 'AI').toUpperCase()} RESPONSE</span>
+                </div>
+                <textarea
+                  value={node.data.text}
+                  readOnly
+                  style={{ width: '100%', minHeight: '60px', maxHeight: '120px', border: 'none', background: 'transparent', color: '#e2e8f0', fontSize: '0.8rem', lineHeight: '1.5', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+              </div>
+            ) : (['http_request', 'json_extractor', 'text_transform'].includes(node.type) && node.data.text) ? (
+              <div style={{
+                padding: '10px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                  <span>Output</span>
+                </div>
+                <textarea
+                  value={node.data.text}
+                  readOnly
+                  style={{ width: '100%', minHeight: '40px', maxHeight: '100px', border: 'none', background: 'transparent', color: '#e2e8f0', fontSize: '0.75rem', lineHeight: '1.4', resize: 'vertical', outline: 'none', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                />
+              </div>
+            ) : node.type === 'meta_chat' && node.data.text ? (
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(14, 165, 233, 0.05) 100%)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                boxShadow: '0 4px 16px rgba(56, 189, 248, 0.1)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38bdf8', fontWeight: 'bold', fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                  <MessageSquare size={14} />
+                  <span>META AI RESPONSE</span>
+                </div>
+                <div style={{
+                  fontSize: '0.85rem',
+                  color: '#e2e8f0',
+                  lineHeight: '1.5',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  maxHeight: '100px'
+                }}
+                  title={node.data.text}
+                >
+                  <textarea
+                    value={node.data.text}
+                    readOnly
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#e2e8f0',
+                      fontSize: '0.85rem',
+                      maxHeight: '100px'
+                    }}
+                  />
+                </div>
+              </div>
+            ) : node.type === 'add_audio' ? (
+              <video src={resultUrl} controls style={{ width: '100%', borderRadius: '4px', outline: 'none' }} />
+            ) : node.type === 'vibes_tts' ? (
+              <audio src={resultUrl} controls style={{ width: '100%', height: '32px', borderRadius: '4px', outline: 'none' }} />
+            ) : ((resultUrl.includes('.mp4') || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'merge_videos' || node.type === 'vibes_generate_videos' || node.type === 'vibes_animate') && resultUrl.startsWith('http')) ? (
+              <video
+                src={resultUrl}
 
-                        <div style={{ fontSize: '0.6rem', color: '#a855f7', opacity: 0.9, lineHeight: '1.3', borderLeft: '2px solid #a855f7', paddingLeft: '6px' }}>
-                            Luồng đã được đồng bộ với tài khoản Meta AI của bạn.
-                        </div>
+                controls
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{ width: '100%', borderRadius: '6px', background: '#000', display: 'block', objectFit: 'cover' }}
+              />
+            ) : resultUrl.startsWith('fbid://') ? (
+              <div style={{
+                padding: '14px',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(124, 58, 237, 0.05) 100%)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                boxShadow: '0 4px 16px rgba(168, 85, 247, 0.1)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a855f7', fontWeight: 'bold', fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                  <Video size={14} style={{ animation: 'pulse 1.5s infinite' }} />
+                  <span>META AI VIDEO READY</span>
+                </div>
 
-                        <a 
-                            href="https://www.meta.ai/" 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                gap: '6px', 
-                                fontSize: '0.65rem', 
-                                fontWeight: '600',
-                                color: '#ffffff', 
-                                background: '#a855f7',
-                                padding: '6px 10px',
-                                borderRadius: '8px',
-                                textDecoration: 'none',
-                                marginTop: '4px',
-                                transition: 'all 0.2s',
-                                textAlign: 'center',
-                                boxShadow: '0 2px 6px rgba(168, 85, 247, 0.3)'
-                            }}
-                            onMouseOver={e => e.currentTarget.style.background = '#9333ea'}
-                            onMouseOut={e => e.currentTarget.style.background = '#a855f7'}
-                        >
-                            <ExternalLink size={12} /> Mở Meta.ai Để Xem & Tải Video
-                        </a>
-                    </div>
-                ) : (
-                    <img src={resultUrl} alt="Result" />
-                )}
-                <a href={resultUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', marginTop: '6px', color: '#38bdf8' }}>
-                    <ExternalLink size={10} /> View Full Source
+                <div style={{ fontSize: '0.65rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                  Video đã được sinh thành công trên cụm GPU của Meta AI!
+                </div>
+
+                <div style={{
+                  padding: '6px 8px',
+                  background: 'rgba(0,0,0,0.3)',
+                  borderRadius: '4px',
+                  fontSize: '0.6rem',
+                  color: '#94a3b8',
+                  fontFamily: 'monospace',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  wordBreak: 'break-all'
+                }}>
+                  fbid: {resultUrl.replace('fbid://', '')}
+                </div>
+
+                <div style={{ fontSize: '0.6rem', color: '#a855f7', opacity: 0.9, lineHeight: '1.3', borderLeft: '2px solid #a855f7', paddingLeft: '6px' }}>
+                  Luồng đã được đồng bộ với tài khoản Meta AI của bạn.
+                </div>
+
+                <a
+                  href="https://www.meta.ai/"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '0.65rem',
+                    fontWeight: '600',
+                    color: '#ffffff',
+                    background: '#a855f7',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    marginTop: '4px',
+                    transition: 'all 0.2s',
+                    textAlign: 'center',
+                    boxShadow: '0 2px 6px rgba(168, 85, 247, 0.3)'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.background = '#9333ea'}
+                  onMouseOut={e => e.currentTarget.style.background = '#a855f7'}
+                >
+                  <ExternalLink size={12} /> Mở Meta.ai Để Xem & Tải Video
                 </a>
-            </div>
+              </div>
+            ) : (
+              <img src={resultUrl} alt="Result" />
+            )}
+            <a href={resultUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.6rem', marginTop: '6px', color: '#38bdf8' }}>
+              <ExternalLink size={10} /> View Full Source
+            </a>
+          </div>
         )}
 
         {node.data.error && (
-            <div className="node-custom-ui error-view" onMouseDown={e => e.stopPropagation()} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
-                <label style={{ color: '#991b1b', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>Execution Error</label>
-                <span style={{ lineHeight: '1.4', display: 'block' }}>{node.data.error}</span>
+          <div className="node-custom-ui error-view" onMouseDown={e => e.stopPropagation()} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
+            <label style={{ color: '#991b1b', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>Execution Error</label>
+            <span style={{ lineHeight: '1.4', display: 'block' }}>{node.data.error}</span>
+          </div>
+        )}
+
+        {/* ── Condition Node (If/Else) ── */}
+        {node.type === 'condition' && (
+          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+            <label>Condition</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Field (dot path)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. text, status, body.result"
+                  value={node.data.field || ''}
+                  onChange={e => updateNodeData(node.id, { field: e.target.value })}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Operator</label>
+                <select
+                  value={node.data.operator || 'is_truthy'}
+                  onChange={e => updateNodeData(node.id, { operator: e.target.value })}
+                  style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
+                >
+                  <option value="equals">Equals</option>
+                  <option value="not_equals">Not Equals</option>
+                  <option value="contains">Contains</option>
+                  <option value="not_contains">Not Contains</option>
+                  <option value="greater_than">Greater Than</option>
+                  <option value="less_than">Less Than</option>
+                  <option value="is_empty">Is Empty</option>
+                  <option value="is_not_empty">Is Not Empty</option>
+                  <option value="is_truthy">Is Truthy</option>
+                </select>
+              </div>
+              {!['is_empty', 'is_not_empty', 'is_truthy'].includes(node.data.operator || 'is_truthy') && (
+                <div>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Compare Value</label>
+                  <input
+                    type="text"
+                    placeholder="Value to compare..."
+                    value={node.data.value || ''}
+                    onChange={e => updateNodeData(node.id, { value: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              )}
             </div>
+          </div>
+        )}
+
+        {/* ── Delay Node ── */}
+        {node.type === 'delay' && (
+          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+            <label>Delay (seconds)</label>
+            <input
+              type="number" min="0.1" step="0.5"
+              value={node.data.seconds ?? 1}
+              onChange={e => updateNodeData(node.id, { seconds: parseFloat(e.target.value) || 1 })}
+              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <span style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Pauses workflow execution for the specified duration.</span>
+          </div>
+        )}
+
+        {/* ── HTTP Request Node ── */}
+        {node.type === 'http_request' && (
+          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ flex: '0 0 90px' }}>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Method</label>
+                <select
+                  value={node.data.method || 'GET'}
+                  onChange={e => updateNodeData(node.id, { method: e.target.value })}
+                  style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>URL</label>
+                <input
+                  type="text"
+                  placeholder="https://api.example.com/data"
+                  value={node.data.url || ''}
+                  onChange={e => updateNodeData(node.id, { url: e.target.value })}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            {(node.data.method === 'POST' || node.data.method === 'PUT') && (
+              <div>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Body (JSON)</label>
+                <textarea
+                  placeholder='{"key": "{{input.text}}"}'
+                  value={node.data.body || ''}
+                  onChange={e => updateNodeData(node.id, { body: e.target.value })}
+                  style={{ width: '100%', minHeight: '50px', padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#f1f5f9', fontSize: '0.75rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'monospace' }}
+                />
+              </div>
+            )}
+            <span style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Supports {'{{input.text}}'} template variables.</span>
+          </div>
+        )}
+
+        {/* ── JSON Extractor Node ── */}
+        {node.type === 'json_extractor' && (
+          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+            <label>JSON Path</label>
+            <input
+              type="text"
+              placeholder="e.g. data.items[0].url"
+              value={node.data.path || ''}
+              onChange={e => updateNodeData(node.id, { path: e.target.value })}
+              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }}
+            />
+            <span style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: '6px', display: 'block' }}>Extracts a value from JSON using dot notation. Supports array indices: items[0].name</span>
+          </div>
+        )}
+
+        {/* ── Text Transform Node ── */}
+        {node.type === 'text_transform' && (
+          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+            <label>Operation</label>
+            <select
+              value={node.data.operation || 'template'}
+              onChange={e => updateNodeData(node.id, { operation: e.target.value })}
+              style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', marginBottom: '8px' }}
+            >
+              <option value="template">Template</option>
+              <option value="regex">Regex Replace</option>
+              <option value="uppercase">Uppercase</option>
+              <option value="lowercase">Lowercase</option>
+              <option value="trim">Trim</option>
+              <option value="split">Split</option>
+              <option value="join">Join</option>
+            </select>
+            {node.data.operation === 'template' && (
+              <div>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Template</label>
+                <textarea
+                  placeholder="Hello {{input1}}, your result is {{input2}}"
+                  value={node.data.template || ''}
+                  onChange={e => updateNodeData(node.id, { template: e.target.value })}
+                  style={{ width: '100%', minHeight: '50px', padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#f1f5f9', fontSize: '0.75rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                />
+              </div>
+            )}
+            {node.data.operation === 'regex' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Pattern</label>
+                  <input type="text" placeholder="\d+" value={node.data.pattern || ''} onChange={e => updateNodeData(node.id, { pattern: e.target.value })} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Replacement</label>
+                  <input type="text" placeholder="***" value={node.data.replacement || ''} onChange={e => updateNodeData(node.id, { replacement: e.target.value })} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+            )}
+            {(node.data.operation === 'split' || node.data.operation === 'join') && (
+              <div>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Delimiter</label>
+                <input type="text" placeholder="\n" value={node.data.delimiter || ''} onChange={e => updateNodeData(node.id, { delimiter: e.target.value })} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Loop Node ── */}
+        {node.type === 'loop_node' && (
+          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+            <label>Loop Configuration</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Max Iterations</label>
+                <input
+                  type="number" min="1" max="1000"
+                  value={node.data.maxIterations ?? 100}
+                  onChange={e => updateNodeData(node.id, { maxIterations: parseInt(e.target.value) || 100 })}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Execution</label>
+                <select
+                  value={node.data.parallel ? 'parallel' : 'sequential'}
+                  onChange={e => updateNodeData(node.id, { parallel: e.target.value === 'parallel' })}
+                  style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
+                >
+                  <option value="sequential">Sequential</option>
+                  <option value="parallel">Parallel</option>
+                </select>
+              </div>
+            </div>
+            <span style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: '6px', display: 'block', lineHeight: '1.3' }}>Iterates over input array. Each item is processed through the sub-graph.</span>
+          </div>
         )}
       </>
     );
@@ -1428,10 +1776,10 @@ const Node = ({ node, transform, isSelected }) => {
             const label = subNode?.data?.label || `Input ${i + 1}`;
             const percentage = ((i + 1) * 100) / (node.data.exposedInputs.length + 1);
             return (
-              <div 
+              <div
                 key={inputId}
                 data-handle={inputId}
-                className={`port port-in ${activeConnection ? 'port-active' : ''}`} 
+                className={`port port-in ${activeConnection ? 'port-active' : ''}`}
                 style={{ top: `${percentage}%` }}
                 onMouseUp={(e) => onPortMouseUp(e, 'in', inputId)}
               >
@@ -1441,20 +1789,40 @@ const Node = ({ node, transform, isSelected }) => {
           })
         ) : (
           <div className={`port port-in ${activeConnection ? 'port-active' : ''}`} onMouseUp={(e) => onPortMouseUp(e, 'in')}>
-             {node.type === 'custom_node' && <span className="port-label port-label-in">IN</span>}
+            {node.type === 'custom_node' && <span className="port-label port-label-in">IN</span>}
           </div>
         )}
 
-        {node.type === 'custom_node' && node.data.exposedOutputs?.length > 0 ? (
+        {node.type === 'condition' ? (
+          /* Condition node: 2 output ports — true (green) and false (red) */
+          <>
+            <div
+              data-handle="true"
+              className="port port-out"
+              style={{ top: '33%' }}
+              onMouseDown={(e) => onPortMouseDown(e, 'out', 'true')}
+            >
+              <span className="port-label port-label-out" style={{ color: '#10b981', fontWeight: 'bold', fontSize: '0.6rem' }}>✓ True</span>
+            </div>
+            <div
+              data-handle="false"
+              className="port port-out"
+              style={{ top: '66%' }}
+              onMouseDown={(e) => onPortMouseDown(e, 'out', 'false')}
+            >
+              <span className="port-label port-label-out" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.6rem' }}>✗ False</span>
+            </div>
+          </>
+        ) : node.type === 'custom_node' && node.data.exposedOutputs?.length > 0 ? (
           node.data.exposedOutputs.map((outputId, i) => {
             const subNode = node.data.subNodes?.find(sn => sn.id === outputId);
             const label = subNode?.data?.label || `Output ${i + 1}`;
             const percentage = ((i + 1) * 100) / (node.data.exposedOutputs.length + 1);
             return (
-              <div 
+              <div
                 key={outputId}
                 data-handle={outputId}
-                className="port port-out" 
+                className="port port-out"
                 style={{ top: `${percentage}%` }}
                 onMouseDown={(e) => onPortMouseDown(e, 'out', outputId)}
               >
@@ -1471,7 +1839,7 @@ const Node = ({ node, transform, isSelected }) => {
 
       <div className="node-header">
         <span className="node-icon">{isExecuting ? <Loader2 size={18} className="spin" /> : getIcon()}</span>
-        
+
         {isEditingLabel ? (
           <input
             type="text"
@@ -1496,8 +1864,8 @@ const Node = ({ node, transform, isSelected }) => {
             }}
           />
         ) : (
-          <span 
-            className="node-label" 
+          <span
+            className="node-label"
             onDoubleClick={(e) => {
               e.stopPropagation();
               setEditLabelValue(node.data.label);
@@ -1511,66 +1879,66 @@ const Node = ({ node, transform, isSelected }) => {
         )}
 
         <div className="node-actions">
-            {isExecuting ? (
-              <button 
-                className="run-single-btn" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  stopWorkflow();
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#ef4444',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  transition: 'all 0.2s',
-                  marginRight: '6px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title="Dừng node này"
-              >
-                <div style={{ width: '10px', height: '10px', background: '#ef4444', borderRadius: '2px' }} />
-              </button>
-            ) : (
-              <button 
-                className="run-single-btn" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  runSingleNode(node.id);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#10b981',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  transition: 'all 0.2s',
-                  marginRight: '6px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title="Chạy riêng node này"
-              >
-                <Play size={14} fill="#10b981" />
-              </button>
-            )}
-            <button className="delete-btn" onClick={() => removeNode(node.id)}><Trash2 size={14} /></button>
+          {isExecuting ? (
+            <button
+              className="run-single-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                stopWorkflow();
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ef4444',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                transition: 'all 0.2s',
+                marginRight: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Dừng node này"
+            >
+              <div style={{ width: '10px', height: '10px', background: '#ef4444', borderRadius: '2px' }} />
+            </button>
+          ) : (
+            <button
+              className="run-single-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                runSingleNode(node.id);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#10b981',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                transition: 'all 0.2s',
+                marginRight: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Chạy riêng node này"
+            >
+              <Play size={14} fill="#10b981" />
+            </button>
+          )}
+          <button className="delete-btn" onClick={() => removeNode(node.id)}><Trash2 size={14} /></button>
         </div>
       </div>
-      
+
       <div className="node-content">
         {renderContent()}
       </div>
-      
+
       <div className="node-footer">
-          <ChevronRight size={12} />
-          <span>{isExecuting ? 'Processing...' : resultUrl ? 'Completed' : 'Ready'}</span>
+        <ChevronRight size={12} />
+        <span>{isExecuting ? 'Processing...' : (resultUrl || node.data.text) ? 'Completed' : 'Ready'}</span>
       </div>
     </div>
   );
