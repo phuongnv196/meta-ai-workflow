@@ -29,7 +29,9 @@ import {
   Type,
   Timer,
   Repeat,
-  GitBranch
+  GitBranch,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import './Sidebar.scss';
@@ -44,6 +46,15 @@ const Sidebar = () => {
   const [editingTemplateId, setEditingTemplateId] = useState(null);
   const [editingTemplateName, setEditingTemplateName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const toggleCategory = (categoryName) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryName]: !prev[categoryName]
+    }));
+  };
 
   useEffect(() => {
     loadCustomNodeLibrary();
@@ -134,37 +145,100 @@ const Sidebar = () => {
         <h2>Vibes AI Flow</h2>
         <div className="search-bar">
           <Search size={14} />
-          <input type="text" placeholder="Search nodes..." />
+          <input 
+            type="text" 
+            placeholder="Search nodes..." 
+            value={searchTerm}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearchTerm(val);
+              
+              if (val.trim() !== '') {
+                const lowerVal = val.toLowerCase();
+                const newExpanded = { ...expandedCategories };
+                
+                nodeCategories.forEach(cat => {
+                  if (cat.items.some(item => 
+                    item.label.toLowerCase().includes(lowerVal) || 
+                    item.type.toLowerCase().includes(lowerVal)
+                  )) {
+                    newExpanded[cat.name] = true;
+                  }
+                });
+
+                if (customNodeLibrary.some(tpl => 
+                  tpl.name.toLowerCase().includes(lowerVal)
+                )) {
+                  newExpanded['Custom Nodes'] = true;
+                }
+                
+                setExpandedCategories(newExpanded);
+              }
+            }}
+          />
         </div>
       </div>
 
       <div className="sidebar-content">
-        {nodeCategories.map((cat) => (
-          <div key={cat.name} className="node-category">
-            <h3>{cat.name}</h3>
-            <div className="node-palette">
-              {cat.items.map((item) => (
-                <div
-                  key={item.type}
-                  className="palette-item"
-                  draggable
-                  onDragStart={(e) => onDragStart(e, item.type, item.label)}
-                  onClick={() => handleAddNode(item.type, item.label)}
-                >
-                  <div className="palette-icon" style={{ color: item.color }}>{item.icon}</div>
-                  <span>{item.label}</span>
-                  <Plus size={14} className="add-icon" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+        {nodeCategories.map((cat) => {
+          const filteredItems = cat.items.filter(item => 
+            item.label.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            item.type.toLowerCase().includes(searchTerm.toLowerCase())
+          );
 
-        {customNodeLibrary.length > 0 && (
-          <div className="node-category">
-            <h3>Custom Nodes</h3>
-            <div className="node-palette">
-              {customNodeLibrary.map((tpl) => (
+          if (searchTerm && filteredItems.length === 0) return null;
+
+          return (
+            <div key={cat.name} className="node-category">
+              <div 
+                className="category-header" 
+                onClick={() => toggleCategory(cat.name)}
+              >
+                {expandedCategories[cat.name] ? <ChevronDown size={14} className="category-icon" /> : <ChevronRight size={14} className="category-icon" />}
+                <h3>{cat.name}</h3>
+              </div>
+              
+              {expandedCategories[cat.name] && (
+                <div className="node-palette">
+                  {filteredItems.map((item) => (
+                    <div
+                      key={item.type}
+                      className="palette-item"
+                      draggable
+                      onDragStart={(e) => onDragStart(e, item.type, item.label)}
+                      onClick={() => handleAddNode(item.type, item.label)}
+                    >
+                      <div className="palette-icon" style={{ color: item.color }}>{item.icon}</div>
+                      <span>{item.label}</span>
+                      <Plus size={14} className="add-icon" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {customNodeLibrary.length > 0 && (() => {
+          const filteredCustom = customNodeLibrary.filter(tpl => 
+            tpl.name.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+
+          if (searchTerm && filteredCustom.length === 0) return null;
+
+          return (
+            <div className="node-category">
+              <div 
+                className="category-header" 
+                onClick={() => toggleCategory('Custom Nodes')}
+              >
+                {expandedCategories['Custom Nodes'] ? <ChevronDown size={14} className="category-icon" /> : <ChevronRight size={14} className="category-icon" />}
+                <h3>Custom Nodes</h3>
+              </div>
+              
+              {expandedCategories['Custom Nodes'] && (
+                <div className="node-palette">
+                  {filteredCustom.map((tpl) => (
                 <div
                   key={tpl.id}
                   className="palette-item"
@@ -238,8 +312,10 @@ const Sidebar = () => {
                 </div>
               ))}
             </div>
+            )}
           </div>
-        )}
+        );
+        })()}
       </div>
 
       <div className="sidebar-footer">

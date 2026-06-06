@@ -58,13 +58,32 @@
     .node-category {
       margin-bottom: 1.5rem;
 
-      h3 {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: rgba($text, 0.4);
+      .category-header {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        cursor: pointer;
         margin-bottom: 0.75rem;
-        padding-left: 0.5rem;
+        padding-left: 0.25rem;
+        transition: color 0.2s ease;
+        user-select: none;
+
+        &:hover {
+          color: rgba($text, 0.7);
+        }
+
+        h3 {
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: rgba($text, 0.4);
+          margin-bottom: 0;
+          padding-left: 0;
+        }
+
+        .category-icon {
+          color: rgba($text, 0.4);
+        }
       }
     }
   }
