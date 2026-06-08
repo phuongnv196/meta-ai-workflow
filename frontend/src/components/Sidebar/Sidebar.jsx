@@ -31,7 +31,9 @@ import {
   Repeat,
   GitBranch,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Palette,
+  Brush
 } from 'lucide-react';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import './Sidebar.scss';
@@ -113,6 +115,14 @@ const Sidebar = () => {
       items: [
         { type: 'text_transform', icon: <Type size={18} />, label: 'Text Transform', color: '#a78bfa' },
         { type: 'json_extractor', icon: <Braces size={18} />, label: 'JSON Extractor', color: '#2dd4bf' },
+      ]
+    },
+    {
+      name: 'Google Stitch',
+      items: [
+        { type: 'stitch_upload',   icon: <Upload size={18} />,  label: 'Stitch Upload',   color: '#ea4335' },
+        { type: 'stitch_generate', icon: <Palette size={18} />, label: 'Stitch Generate', color: '#4285f4' },
+        { type: 'stitch_edit',     icon: <Brush size={18} />,   label: 'Stitch Edit',     color: '#34a853' },
       ]
     },
     {

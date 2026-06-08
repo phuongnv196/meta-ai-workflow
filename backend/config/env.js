@@ -29,6 +29,8 @@ const config = {
   metaAuthToken: process.env.META_AUTH_TOKEN,
   metaCookie: process.env.META_COOKIE,
 
+  stitchApiKey: process.env.STITCH_API_KEY || '',
+
   get baseUrl() {
     return `http://${this.host}:${this.port}`;
   },

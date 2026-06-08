@@ -22,6 +22,10 @@ const REFERENCE_NODE_TYPES = [
   'vibes_tts',
   'vibes_animate',
   'custom_node',
+  // Google Stitch AI nodes
+  'stitch_upload',
+  'stitch_generate',
+  'stitch_edit',
 ];
 
 /**

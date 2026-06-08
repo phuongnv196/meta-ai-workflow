@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import useWorkflowStore from '../../store/useWorkflowStore';
 import Node from '../Node/Node';
-import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward, Save, SaveAll, ArrowLeft, MessageSquare, Image as ImageIcon, Video, Upload, Crop, Film, Music, FileText, Mic, Layers, Clapperboard, PersonStanding, Zap, Database, PackagePlus, Trash2, X, Brain, Globe, Braces, Type, Timer, Repeat, GitBranch } from 'lucide-react';
+import { Play, RotateCcw, ZoomIn, ZoomOut, SkipForward, Save, SaveAll, ArrowLeft, MessageSquare, Image as ImageIcon, Video, Upload, Crop, Film, Music, FileText, Mic, Layers, Clapperboard, PersonStanding, Zap, Database, PackagePlus, Trash2, X, Brain, Globe, Braces, Type, Timer, Repeat, GitBranch, Palette, Brush } from 'lucide-react';
 import './WorkflowCanvas.scss';
 
 const NODE_CATEGORIES = [
@@ -57,6 +57,14 @@ const NODE_CATEGORIES = [
     items: [
       { type: 'text_transform', icon: <Type size={14} />, label: 'Text Transform', color: '#a78bfa' },
       { type: 'json_extractor', icon: <Braces size={14} />, label: 'JSON Extractor', color: '#2dd4bf' },
+    ]
+  },
+  {
+    name: 'Google Stitch',
+    items: [
+      { type: 'stitch_upload',   icon: <Upload size={14} />,  label: 'Stitch Upload',   color: '#ea4335' },
+      { type: 'stitch_generate', icon: <Palette size={14} />, label: 'Stitch Generate', color: '#4285f4' },
+      { type: 'stitch_edit',     icon: <Brush size={14} />,   label: 'Stitch Edit',     color: '#34a853' },
     ]
   },
   {

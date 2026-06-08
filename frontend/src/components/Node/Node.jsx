@@ -5,7 +5,8 @@ import {
   FileText, Zap, ChevronRight, Loader2, ExternalLink, Music, Crop, Film, Play,
   Upload, Mic, Wand2, Layers, Clapperboard, Speaker, PersonStanding,
   PackagePlus, Package, Pencil, Ungroup,
-  Brain, Globe, Braces, Type, Timer, Repeat, GitBranch
+  Brain, Globe, Braces, Type, Timer, Repeat, GitBranch,
+  Palette, Brush
 } from 'lucide-react';
 import { REFERENCE_NODE_TYPES } from '../../constants';
 import { API_BASE_URL } from '../../config';
@@ -227,6 +228,9 @@ const Node = ({ node, transform, isSelected }) => {
       case 'vibes_generate_videos': return <Clapperboard size={18} color="#fb923c" />;
       // case 'vibes_tts':              return <Speaker size={18} color="#60a5fa" />;
       case 'vibes_animate': return <PersonStanding size={18} color="#f87171" />;
+      case 'stitch_upload': return <Upload size={18} color="#ea4335" />;
+      case 'stitch_generate': return <Palette size={18} color="#4285f4" />;
+      case 'stitch_edit': return <Brush size={18} color="#34a853" />;
       case 'custom_node': return <Package size={18} color={node.data.color || '#f59e0b'} />;
       default: return <Settings size={18} color="#94a3b8" />;
     }
@@ -382,7 +386,7 @@ const Node = ({ node, transform, isSelected }) => {
 
     return (
       <>
-        {(node.type === 'text_input' || node.type === 'meta_chat' || node.type === 'meta_imagine' || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'universal_llm') && (
+        {(node.type === 'text_input' || node.type === 'meta_chat' || node.type === 'meta_imagine' || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'universal_llm' || node.type === 'stitch_generate' || node.type === 'stitch_edit') && (
           <div className="node-custom-ui" style={{ position: 'relative' }}>
             <label>Prompt</label>
             <textarea
@@ -573,6 +577,23 @@ const Node = ({ node, transform, isSelected }) => {
                 <span style={{ fontSize: '0.6rem', color: '#64748b', marginLeft: 'auto' }}>
                   {node.data.modeFast ? 'Text-only, faster response' : 'Off'}
                 </span>
+              </div>
+            )}
+
+            {/* Stitch node device type selector */}
+            {(node.type === 'stitch_generate' || node.type === 'stitch_edit') && (
+              <div onMouseDown={e => e.stopPropagation()} style={{ marginTop: '8px' }}>
+                <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Device Type</label>
+                <select
+                  value={node.data.deviceType || 'DESKTOP'}
+                  onChange={e => updateNodeData(node.id, { deviceType: e.target.value })}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', marginTop: '4px' }}
+                >
+                  <option value="DESKTOP">Desktop</option>
+                  <option value="MOBILE">Mobile</option>
+                  <option value="TABLET">Tablet</option>
+                  <option value="AGNOSTIC">Agnostic</option>
+                </select>
               </div>
             )}
 
@@ -812,6 +833,42 @@ const Node = ({ node, transform, isSelected }) => {
               <>
                 <Upload size={20} />
                 <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Google Stitch: Upload Image ── */}
+        {node.type === 'stitch_upload' && (
+          <div
+            className="node-custom-ui file-drop"
+            style={{ cursor: 'pointer', position: 'relative' }}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={() => {
+              const inp = document.createElement('input');
+              inp.type = 'file'; inp.accept = 'image/*';
+              inp.onchange = (ev) => {
+                const f = ev.target.files[0]; if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const b64 = reader.result.split(',')[1];
+                  updateNodeData(node.id, { base64Data: b64, fileName: f.name, mimeType: f.type, previewUrl: reader.result });
+                };
+                reader.readAsDataURL(f);
+              };
+              inp.click();
+            }}
+          >
+            {node.data.previewUrl ? (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <img src={node.data.previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '300px', objectFit: 'cover' }} />
+                <span style={{ fontSize: '0.65rem', color: '#ea4335', wordBreak: 'break-all' }}>Attached: {node.data.fileName}</span>
+              </div>
+            ) : (
+              <>
+                <Upload size={20} />
+                <span style={{ fontSize: '0.75rem' }}>Click to upload image to Stitch</span>
+                <span style={{ fontSize: '0.6rem', color: '#64748b' }}>(or connect upstream image node)</span>
               </>
             )}
           </div>

@@ -35,6 +35,10 @@ const handlers = {
   json_extractor:          require('./json-extractor.handler'),
   text_transform:          require('./text-transform.handler'),
   loop_node:               require('./loop-node.handler'),
+  // Google Stitch AI nodes
+  stitch_upload:           require('./stitch-upload.handler'),
+  stitch_generate:         require('./stitch-generate.handler'),
+  stitch_edit:             require('./stitch-edit.handler'),
 };
 
 function getHandler(nodeType) {
