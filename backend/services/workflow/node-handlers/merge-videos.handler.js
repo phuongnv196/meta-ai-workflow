@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const { downloadFile } = require('../../meta_ai/uploader');
-const { concatVideos, hasAudio, addSilentAudio } = require('../../ffmpeg.service');
+const { concatVideos, concatVideosWithTransition, hasAudio, addSilentAudio } = require('../../ffmpeg.service');
 const { createTempPath, cleanupFile, cleanupFiles, ensureTempDir } = require('../../temp-file.service');
 const config = require('../../../config/env');
 
@@ -25,7 +25,10 @@ async function handle(node, _inputs, context) {
     throw new Error('Không tìm thấy bất kỳ video đầu vào nào để ghép.');
   }
 
-  log(`  Merging ${videoInputs.length} videos sequentially (Timeline ordered Left-to-Right)...`);
+  const transition = node.data.transition || 'none';
+  const transitionDuration = parseFloat(node.data.transitionDuration) || 0.5;
+
+  log(`  Merging ${videoInputs.length} videos sequentially (Timeline ordered Left-to-Right) transition=${transition} duration=${transitionDuration}s...`);
 
   ensureTempDir();
   const localFiles = [];
@@ -54,20 +57,24 @@ async function handle(node, _inputs, context) {
       }
     }
 
-    // Step 2: Create FFmpeg concat listing
-    const { filePath: txtPath } = createTempPath('concat', '.txt');
-    concatTxtPath = txtPath;
+    // Step 2: Merge with or without transition
+    if (transition !== 'none' && localFiles.length >= 2) {
+      log(`  Executing FFmpeg xfade merge (${transition}) to ${outputFilePath}...`);
+      concatVideosWithTransition(localFiles, outputFilePath, transition, transitionDuration);
+    } else {
+      const { filePath: txtPath } = createTempPath('concat', '.txt');
+      concatTxtPath = txtPath;
 
-    const fileListContent = localFiles
-      .map(filepath => `file '${filepath.replace(/\\/g, '/')}'`)
-      .join('\n');
+      const fileListContent = localFiles
+        .map(filepath => `file '${filepath.replace(/\\/g, '/')}'`)
+        .join('\n');
 
-    fs.writeFileSync(concatTxtPath, fileListContent);
-    log(`  Created FFmpeg concat listing file:\n${fileListContent}`);
+      fs.writeFileSync(concatTxtPath, fileListContent);
+      log(`  Created FFmpeg concat listing file:\n${fileListContent}`);
 
-    // Step 3: Run FFmpeg concat
-    log(`  Executing FFmpeg stream-copy merge to ${outputFilePath}...`);
-    concatVideos(concatTxtPath, outputFilePath);
+      log(`  Executing FFmpeg stream-copy merge to ${outputFilePath}...`);
+      concatVideos(concatTxtPath, outputFilePath);
+    }
     log(`  FFmpeg merge completed successfully.`);
   } finally {
     cleanupFile(concatTxtPath, { info: log, warn: log });

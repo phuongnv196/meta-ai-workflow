@@ -800,6 +800,80 @@ const Node = ({ node, transform, isSelected }) => {
               <Film size={14} />
               <span>Timeline: Trái sang Phải (X-axis)</span>
             </div>
+
+            <label style={{ marginTop: '8px' }}>Transition</label>
+            <select
+              value={node.data.transition || 'none'}
+              onChange={(e) => updateNodeData(node.id, { transition: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                background: 'rgba(30, 41, 59, 0.8)',
+                color: '#e2e8f0',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="none">None (Direct Cut)</option>
+              <option value="fade">Fade</option>
+              <option value="fadeblack">Fade through Black</option>
+              <option value="fadewhite">Fade through White</option>
+              <option value="dissolve">Dissolve</option>
+              <option value="wipeleft">Wipe Left</option>
+              <option value="wiperight">Wipe Right</option>
+              <option value="wipeup">Wipe Up</option>
+              <option value="wipedown">Wipe Down</option>
+              <option value="slideleft">Slide Left</option>
+              <option value="slideright">Slide Right</option>
+              <option value="slideup">Slide Up</option>
+              <option value="slidedown">Slide Down</option>
+              <option value="smoothleft">Smooth Left</option>
+              <option value="smoothright">Smooth Right</option>
+              <option value="circlecrop">Circle Crop</option>
+              <option value="rectcrop">Rect Crop</option>
+              <option value="circleopen">Circle Open</option>
+              <option value="circleclose">Circle Close</option>
+              <option value="horzopen">Horizontal Open</option>
+              <option value="horzclose">Horizontal Close</option>
+              <option value="vertopen">Vertical Open</option>
+              <option value="vertclose">Vertical Close</option>
+              <option value="diagbl">Diagonal BL</option>
+              <option value="diagbr">Diagonal BR</option>
+              <option value="diagtl">Diagonal TL</option>
+              <option value="diagtr">Diagonal TR</option>
+              <option value="radial">Radial</option>
+              <option value="zoomin">Zoom In</option>
+              <option value="squeezeh">Squeeze Horizontal</option>
+              <option value="squeezev">Squeeze Vertical</option>
+            </select>
+
+            {node.data.transition && node.data.transition !== 'none' && (
+              <>
+                <label style={{ marginTop: '8px' }}>Duration (s)</label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="3"
+                  step="0.1"
+                  value={node.data.transitionDuration || 0.5}
+                  onChange={(e) => updateNodeData(node.id, { transitionDuration: parseFloat(e.target.value) || 0.5 })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                    background: 'rgba(30, 41, 59, 0.8)',
+                    color: '#e2e8f0',
+                    fontSize: '0.75rem',
+                    outline: 'none',
+                  }}
+                />
+              </>
+            )}
+
             <span style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: '4px', display: 'block', lineHeight: '1.3' }}>
               Nối tất cả video đầu vào thành một video dài duy nhất theo thứ tự từ trái sang phải trên Canvas!
             </span>
