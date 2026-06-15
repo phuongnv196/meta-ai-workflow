@@ -136,7 +136,7 @@ async function editScreens(projectId, screenIds, prompt, deviceType = 'DESKTOP')
   const callArgs = {
     projectId,
     selectedScreenIds: screenIds,
-    prompt: `Keep the original design, character, maintain the aspect ratio and edit: ${prompt}`,
+    prompt: `Require: Only use the first reference image as the base. Keep the original design, character, maintain the aspect ratio of first reference image and edit: ${prompt}`,
     deviceType,
   };
   console.log(`[Stitch] edit_screens args: ${JSON.stringify(callArgs)}`);

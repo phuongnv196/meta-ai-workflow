@@ -365,9 +365,14 @@ const Node = ({ node, transform, isSelected }) => {
           {resultUrl && (
             <div className="result-view" onMouseDown={e => e.stopPropagation()} style={{ marginTop: '8px' }}>
               <label>Result</label>
-              {resultUrl.endsWith('.mp4') || resultUrl.endsWith('.webm') ? (
-                <video src={resultUrl} controls autoPlay loop muted style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: '4px' }} />
-              ) : resultUrl.endsWith('.mp3') || resultUrl.endsWith('.wav') ? (
+              {(resultUrl.match(/\.(mp4|webm|mov|mkv)($|\?)/i) || resultUrl.includes('temp/merged_') || (node.data.exposedOutputs && node.data.subNodes?.some(n => ['meta_video', 'meta_video_gen', 'merge_videos', 'vibes_generate_videos', 'vibes_animate', 'add_audio'].includes(n.type) && node.data.exposedOutputs.includes(n.id))) && resultUrl.startsWith('http')) ? (
+                <video src={resultUrl} controls autoPlay loop muted playsInline style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: '4px', background: '#000' }} />
+              ) : resultUrl.startsWith('fbid://') ? (
+                <div style={{ padding: '8px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '6px', fontSize: '0.7rem', color: '#e2e8f0' }}>
+                  <span style={{ color: '#a855f7', fontWeight: 'bold' }}>Meta Video Ready</span><br/>
+                  fbid: {resultUrl.replace('fbid://', '')}
+                </div>
+              ) : resultUrl.match(/\.(mp3|wav|ogg)($|\?)/i) ? (
                 <audio src={resultUrl} controls style={{ width: '100%' }} />
               ) : (
                 <img src={resultUrl} alt="Result" style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: '4px' }} />
@@ -1499,7 +1504,7 @@ const Node = ({ node, transform, isSelected }) => {
           </div>
         )}
 
-        {(resultUrl || (['meta_chat', 'universal_llm', 'http_request', 'json_extractor', 'text_transform'].includes(node.type) && node.data.text)) && (
+        {(resultUrl || (['meta_chat', 'universal_llm', 'http_request', 'json_extractor', 'text_transform'].includes(node.type) && node.data.text)) && node.type !== 'custom_node' && (
           <div className="node-custom-ui result-view" onMouseDown={e => e.stopPropagation()}>
             {node.type === 'universal_llm' && node.data.text ? (
               <div style={{

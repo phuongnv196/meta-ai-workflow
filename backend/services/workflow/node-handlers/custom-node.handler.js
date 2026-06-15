@@ -19,6 +19,12 @@ const SUB_REFERENCE_NODE_TYPES = [
   'vibes_generate_images', 'vibes_generate_videos', 'vibes_tts', 'vibes_animate',
 ];
 
+// Node types that act as placeholders (they ignore incoming edges).
+// When exposed as inputs, they MUST be overridden.
+const PLACEHOLDER_NODE_TYPES = [
+  'text_input', 'file_input', 'vibes_upload_image', 'vibes_upload_audio', 'stitch_upload'
+];
+
 async function handle(node, inputs, context) {
   const { log } = context;
   const { subNodes: rawSubNodes, subEdges: rawSubEdges, exposedInputs = [], exposedOutputs = [], label } = node.data;
@@ -34,9 +40,6 @@ async function handle(node, inputs, context) {
   log(`[CustomNode] Executing "${label}" with ${subNodes.length} sub-nodes, ${exposedInputs.length} exposed inputs, ${exposedOutputs.length} exposed outputs`);
 
   // ── Build a reference map scoped to the sub-graph ──
-  // This is critical: without it, resolveAttachmentsFromEdges inside sub-node
-  // handlers (e.g. meta_chat, meta_imagine) will fail because the main
-  // workflow's globalRefMap does not contain sub-node IDs.
   const subRefMap = {};
   let subRefCount = 1;
   subNodes.forEach(sn => {
@@ -58,7 +61,6 @@ async function handle(node, inputs, context) {
     if (sn.data) {
       subResults[sn.id] = { ...sn.data };
 
-      // Ensure file_input nodes have attachments array like preloadResults does
       if (sn.type === 'file_input' && sn.data.mediaId && (!sn.data.attachments || sn.data.attachments.length === 0)) {
         subResults[sn.id].attachments = [{
           id: sn.data.mediaId,
@@ -73,56 +75,68 @@ async function handle(node, inputs, context) {
   const externalIncomingEdges = context.incomingEdges || [];
   const overriddenNodes = new Set();
   const usedExposedInputs = new Set();
+  
+  const externalNodesToInject = [];
+  const externalEdgesToInject = [];
 
-  // Pass 1: map edges that have an explicit targetHandle matching an exposed input
+  let nextIdx = 0;
+
   externalIncomingEdges.forEach((edge) => {
-    const targetHandle = edge.targetHandle;
     const inputResult = context.results[edge.source];
     if (!inputResult) {
       log(`[CustomNode] No result for external source ${edge.source}, skipping`);
       return;
     }
-    if (targetHandle && exposedInputs.includes(targetHandle)) {
-      log(`[CustomNode] Override (handle): external ${edge.source} → sub-node ${targetHandle}`);
-      // FULL REPLACE — do not merge with old saved data
+
+    let targetHandle = edge.targetHandle;
+    
+    // Fallback to positional matching if targetHandle is invalid
+    if (!targetHandle || !exposedInputs.includes(targetHandle)) {
+      while (nextIdx < exposedInputs.length && usedExposedInputs.has(exposedInputs[nextIdx])) {
+        nextIdx++;
+      }
+      if (nextIdx >= exposedInputs.length) {
+        log(`[CustomNode] Warning: extra external input from ${edge.source} has no available exposed input slot`);
+        return;
+      }
+      targetHandle = exposedInputs[nextIdx];
+      nextIdx++;
+    }
+
+    const sn = subNodes.find(n => n.id === targetHandle);
+    if (!sn) return;
+
+    if (PLACEHOLDER_NODE_TYPES.includes(sn.type)) {
+      // OVERRIDE logic: Placeholder nodes are completely replaced by the external input
+      log(`[CustomNode] Override (placeholder): external ${edge.source} → sub-node ${targetHandle}`);
       subResults[targetHandle] = { ...inputResult };
       overriddenNodes.add(targetHandle);
       usedExposedInputs.add(targetHandle);
-
-      // Also update cloned subNode.data so handlers that read node.data get fresh values
-      const sn = subNodes.find(n => n.id === targetHandle);
-      if (sn) sn.data = { ...sn.data, ...inputResult };
+      sn.data = { ...sn.data, ...inputResult };
+    } else {
+      // INJECT logic: Processing nodes (like merge_videos) receive external inputs directly
+      log(`[CustomNode] Inject (processing): external ${edge.source} → sub-node ${targetHandle}`);
+      
+      const extNode = context.nodes.find(n => n.id === edge.source);
+      if (extNode) {
+        externalNodesToInject.push(extNode);
+        subResults[extNode.id] = { ...inputResult };
+        overriddenNodes.add(extNode.id); // Mark external node as skipped so we don't re-run it
+        
+        externalEdgesToInject.push({
+          id: `ext_${edge.id}`,
+          source: extNode.id,
+          sourceHandle: edge.sourceHandle,
+          target: targetHandle,
+          targetHandle: null
+        });
+      }
     }
   });
 
-  // Pass 2: edges without valid targetHandle → assign to remaining exposed inputs in order
-  let nextIdx = 0;
-  externalIncomingEdges.forEach((edge) => {
-    const targetHandle = edge.targetHandle;
-    if (targetHandle && exposedInputs.includes(targetHandle)) return; // handled in pass 1
-
-    const inputResult = context.results[edge.source];
-    if (!inputResult) return;
-
-    while (nextIdx < exposedInputs.length && usedExposedInputs.has(exposedInputs[nextIdx])) {
-      nextIdx++;
-    }
-    if (nextIdx >= exposedInputs.length) {
-      log(`[CustomNode] Warning: extra external input from ${edge.source} has no available exposed input slot`);
-      return;
-    }
-
-    const exposedNodeId = exposedInputs[nextIdx];
-    log(`[CustomNode] Override (positional idx=${nextIdx}): external ${edge.source} → sub-node ${exposedNodeId}`);
-    subResults[exposedNodeId] = { ...inputResult };
-    overriddenNodes.add(exposedNodeId);
-    usedExposedInputs.add(exposedNodeId);
-
-    const sn = subNodes.find(n => n.id === exposedNodeId);
-    if (sn) sn.data = { ...sn.data, ...inputResult };
-
-    nextIdx++;
-  });
+  // Inject external context into the sub-graph
+  subNodes.push(...externalNodesToInject);
+  subEdges.push(...externalEdgesToInject);
 
   log(`[CustomNode] Overridden sub-nodes: [${[...overriddenNodes].join(', ')}]`);
 
