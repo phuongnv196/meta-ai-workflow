@@ -43,4 +43,4 @@ function cleanupFiles(filePaths, logger) {
   }
 }
 
-module.exports = { TEMP_DIR, ensureTempDir, createTempPath, cleanupFile, cleanupFiles };
+module.exports = { TEMP_DIR: TEMP_DIR, ensureTempDir, createTempPath, cleanupFile, cleanupFiles };

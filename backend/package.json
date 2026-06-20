@@ -4,6 +4,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "node server.js",
+    "build": "ncc build server.js -o ../net-client/SIUTeam.MetaAI/nodejs --external lowdb",
     "test": "jest",
     "test:integration": "node integration-test.js"
   },
@@ -31,6 +32,7 @@
     "ws": "^8.20.1"
   },
   "devDependencies": {
+    "@vercel/ncc": "^0.38.3",
     "jest": "^30.4.2"
   }
 }

@@ -18,6 +18,7 @@ app.use(cors({ origin: config.allowedOrigins }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/temp', express.static(path.join(__dirname, 'temp')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -36,6 +37,11 @@ app.use('/execute', executeRoutes);
 app.use('/workflows', workflowRoutes);
 app.use('/custom-nodes', customNodeRoutes);
 app.use('/settings', settingsRoutes);
+
+// Catch-all cho SPA (React Router) - Dùng Regex vì Express v5 không hỗ trợ chuỗi '*'
+app.get(/.*/, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Global error handler (must be last)
 app.use(errorHandler);

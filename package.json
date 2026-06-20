@@ -1,5 +1,6 @@
 {
   "scripts": {
-    "dev": "pnpm -r --parallel --if-present dev"
+    "dev": "pnpm -r --parallel --if-present dev",
+    "build": "pnpm -r --parallel --if-present build"
   }
 }
