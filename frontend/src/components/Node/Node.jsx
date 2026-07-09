@@ -65,7 +65,7 @@ const getParentReferences = (nodeId, nodes, edges) => {
 };
 
 const Node = ({ node, transform, isSelected }) => {
-  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeIds, runSingleNode, stopWorkflow, toggleNodeSelection, unpackCustomNode } = useWorkflowStore();
+  const { nodes, edges, updateNodePosition, updateNodeDimensions, updateNodeData, removeNode, setActiveConnection, activeConnection, addEdge, executingNodeIds, runSingleNode, stopWorkflow, toggleNodeSelection, unpackCustomNode, isSpacePressed } = useWorkflowStore();
   const [showCustomNodeEditor, setShowCustomNodeEditor] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editLabelValue, setEditLabelValue] = useState(node.data.label);
@@ -106,8 +106,23 @@ const Node = ({ node, transform, isSelected }) => {
     return () => observer.disconnect();
   }, [node.id, node.dimensions?.width, node.dimensions?.height, updateNodeDimensions]);
 
+  // Many inner elements (result-view, file-drop, custom-ui panels, textareas)
+  // call this on mousedown to prevent node-dragging from starting when
+  // interacting with their controls. In pan mode (space held or middle mouse
+  // button), we must NOT stop propagation so the event can bubble up to
+  // WorkflowCanvas's pan handler — otherwise Space+drag/middle-click pan
+  // would silently fail whenever the drag starts over one of these areas.
+  const stopPropagationUnlessPanning = (e) => {
+    if (e.button === 1 || isSpacePressed) return;
+    e.stopPropagation();
+  };
+
   const onMouseDown = (e) => {
     if (e.target.closest('.delete-btn') || e.target.closest('.port') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.result-view') || e.target.closest('.file-drop') || e.target.closest('.node-label')) return;
+
+    // Pan mode (space held or middle mouse button): don't drag the node,
+    // let the mousedown bubble up to WorkflowCanvas's pan handler instead.
+    if (e.button === 1 || isSpacePressed) return;
 
     setIsDragging(true);
     const startX = e.clientX / transform.scale - node.position.x;
@@ -292,7 +307,7 @@ const Node = ({ node, transform, isSelected }) => {
                 }}
                 onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                 onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                onMouseDown={e => e.stopPropagation()}
+                onMouseDown={stopPropagationUnlessPanning}
               >
                 <Pencil size={12} /> {showCustomNodeEditor ? 'Hide' : 'Edit'}
               </button>
@@ -314,7 +329,7 @@ const Node = ({ node, transform, isSelected }) => {
             </div>
           </div>
           {showCustomNodeEditor && node.data.subNodes && (
-            <div className="node-custom-ui" style={{ marginTop: '8px' }} onMouseDown={e => e.stopPropagation()}>
+            <div className="node-custom-ui" style={{ marginTop: '8px' }} onMouseDown={stopPropagationUnlessPanning}>
               <label style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sub-nodes</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
                 {node.data.subNodes.map((sn, idx) => {
@@ -357,7 +372,7 @@ const Node = ({ node, transform, isSelected }) => {
                             border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#f1f5f9',
                             fontSize: '0.75rem', outline: 'none', resize: 'vertical', marginTop: '4px'
                           }}
-                          onMouseDown={e => e.stopPropagation()}
+                          onMouseDown={stopPropagationUnlessPanning}
                         />
                       )}
                     </div>
@@ -367,7 +382,7 @@ const Node = ({ node, transform, isSelected }) => {
             </div>
           )}
           {resultUrl && (
-            <div className="result-view" onMouseDown={e => e.stopPropagation()} style={{ marginTop: '8px' }}>
+            <div className="result-view" onMouseDown={stopPropagationUnlessPanning} style={{ marginTop: '8px' }}>
               <label>Result</label>
               {(resultUrl.match(/\.(mp4|webm|mov|mkv)($|\?)/i) || resultUrl.includes('temp/merged_') || (node.data.exposedOutputs && node.data.subNodes?.some(n => ['meta_video', 'meta_video_gen', 'merge_videos', 'vibes_generate_videos', 'vibes_animate', 'add_audio'].includes(n.type) && node.data.exposedOutputs.includes(n.id))) && resultUrl.startsWith('http')) ? (
                 <video src={resultUrl} controls autoPlay loop muted playsInline style={{ width: '100%', maxWidth: '100%', height: 'auto', borderRadius: '4px', background: '#000' }} />
@@ -384,7 +399,7 @@ const Node = ({ node, transform, isSelected }) => {
             </div>
           )}
           {node.data.error && (
-            <div className="node-custom-ui error-view" onMouseDown={e => e.stopPropagation()} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
+            <div className="node-custom-ui error-view" onMouseDown={stopPropagationUnlessPanning} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
               <label style={{ color: '#991b1b', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>Execution Error</label>
               <span style={{ lineHeight: '1.4', display: 'block', overflowWrap: 'break-word' }}>{node.data.error}</span>
             </div>
@@ -429,7 +444,7 @@ const Node = ({ node, transform, isSelected }) => {
                   setShowSuggestions(false);
                 }
               }}
-              onMouseDown={(e) => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
             />
             {showSuggestions && suggestionsList.length > 0 && (
               <div className="suggestions-overlay" style={{
@@ -539,7 +554,7 @@ const Node = ({ node, transform, isSelected }) => {
             {/* MODE_FAST toggle for Meta Chat node */}
             {node.type === 'meta_chat' && (
               <div
-                onMouseDown={e => e.stopPropagation()}
+                onMouseDown={stopPropagationUnlessPanning}
                 style={{
                   marginTop: '8px',
                   display: 'flex',
@@ -591,7 +606,7 @@ const Node = ({ node, transform, isSelected }) => {
 
             {/* Gemini Image Gen: aspect ratio + image size */}
             {node.type === 'gemini_image_gen' && (
-              <div onMouseDown={e => e.stopPropagation()} style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+              <div onMouseDown={stopPropagationUnlessPanning} style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>Aspect Ratio</label>
                   <select
@@ -624,7 +639,7 @@ const Node = ({ node, transform, isSelected }) => {
 
             {/* Stitch node device type selector */}
             {(node.type === 'stitch_generate' || node.type === 'stitch_edit') && (
-              <div onMouseDown={e => e.stopPropagation()} style={{ marginTop: '8px' }}>
+              <div onMouseDown={stopPropagationUnlessPanning} style={{ marginTop: '8px' }}>
                 <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Device Type</label>
                 <select
                   value={node.data.deviceType || 'DESKTOP'}
@@ -642,7 +657,7 @@ const Node = ({ node, transform, isSelected }) => {
             {/* Universal LLM specific controls */}
             {node.type === 'universal_llm' && (
               <div
-                onMouseDown={e => e.stopPropagation()}
+                onMouseDown={stopPropagationUnlessPanning}
                 style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}
               >
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -714,7 +729,7 @@ const Node = ({ node, transform, isSelected }) => {
                     value={node.data.systemPrompt || ''}
                     onChange={e => updateNodeData(node.id, { systemPrompt: e.target.value })}
                     style={{ width: '100%', minHeight: '40px', padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#f1f5f9', fontSize: '0.75rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
-                    onMouseDown={e => e.stopPropagation()}
+                    onMouseDown={stopPropagationUnlessPanning}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -742,7 +757,7 @@ const Node = ({ node, transform, isSelected }) => {
           </div>
         )}
         {node.type === 'add_audio' && (
-          <div className="node-custom-ui file-drop" style={{ cursor: 'pointer', position: 'relative' }} onMouseDown={e => e.stopPropagation()} onClick={() => {
+          <div className="node-custom-ui file-drop" style={{ cursor: 'pointer', position: 'relative' }} onMouseDown={stopPropagationUnlessPanning} onClick={() => {
             const inp = document.createElement('input');
             inp.type = 'file'; inp.accept = 'audio/*';
             inp.onchange = (ev) => {
@@ -770,7 +785,7 @@ const Node = ({ node, transform, isSelected }) => {
           </div>
         )}
         {node.type === 'extract_frame' && (
-          <div className="node-custom-ui" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Extraction Strategy</label>
             <select
               value={node.data.frameType || 'last'}
@@ -823,7 +838,7 @@ const Node = ({ node, transform, isSelected }) => {
           </div>
         )}
         {node.type === 'merge_videos' && (
-          <div className="node-custom-ui" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Timeline Order</label>
             <div style={{
               display: 'flex',
@@ -925,7 +940,7 @@ const Node = ({ node, transform, isSelected }) => {
           <div
             className="node-custom-ui file-drop"
             onClick={() => fileInputRef.current.click()}
-            onMouseDown={(e) => e.stopPropagation()}
+            onMouseDown={stopPropagationUnlessPanning}
             style={{ cursor: 'pointer', position: 'relative' }}
           >
             <input
@@ -959,7 +974,7 @@ const Node = ({ node, transform, isSelected }) => {
           <div
             className="node-custom-ui file-drop"
             style={{ cursor: 'pointer', position: 'relative' }}
-            onMouseDown={e => e.stopPropagation()}
+            onMouseDown={stopPropagationUnlessPanning}
             onClick={() => {
               const inp = document.createElement('input');
               inp.type = 'file'; inp.accept = 'image/*';
@@ -995,7 +1010,7 @@ const Node = ({ node, transform, isSelected }) => {
           <div
             className="node-custom-ui file-drop"
             style={{ cursor: 'pointer', position: 'relative' }}
-            onMouseDown={e => e.stopPropagation()}
+            onMouseDown={stopPropagationUnlessPanning}
             onClick={() => {
               const inp = document.createElement('input');
               inp.type = 'file'; inp.accept = 'image/*';
@@ -1032,7 +1047,7 @@ const Node = ({ node, transform, isSelected }) => {
             <div
               className="node-custom-ui file-drop"
               style={{ cursor: 'pointer', position: 'relative' }}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
               onClick={() => {
                 const inp = document.createElement('input');
                 inp.type = 'file'; inp.accept = 'image/*';
@@ -1061,7 +1076,7 @@ const Node = ({ node, transform, isSelected }) => {
               )}
             </div>
             {node.data.url && (
-              <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()} style={{ paddingTop: 0, marginTop: '-8px' }}>
+              <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning} style={{ paddingTop: 0, marginTop: '-8px' }}>
                 <label style={{ fontSize: '0.6rem', color: '#94a3b8' }}>CDN URL</label>
                 <a href={node.data.url} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: '0.6rem', color: '#38bdf8', wordBreak: 'break-all', marginTop: '2px' }}>
                   {node.data.url.slice(0, 60)}…
@@ -1077,7 +1092,7 @@ const Node = ({ node, transform, isSelected }) => {
             <div
               className="node-custom-ui file-drop"
               style={{ cursor: 'pointer', position: 'relative' }}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
               onClick={() => {
                 const inp = document.createElement('input');
                 inp.type = 'file'; inp.accept = 'audio/*';
@@ -1106,7 +1121,7 @@ const Node = ({ node, transform, isSelected }) => {
               )}
             </div>
             {node.data.cdnUrl && (
-              <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()} style={{ paddingTop: 0, marginTop: '-8px' }}>
+              <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning} style={{ paddingTop: 0, marginTop: '-8px' }}>
                 <label style={{ fontSize: '0.6rem', color: '#94a3b8' }}>CDN URL</label>
                 <a href={node.data.cdnUrl} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: '0.6rem', color: '#f472b6', wordBreak: 'break-all', marginTop: '2px' }}>
                   {node.data.cdnUrl.slice(0, 60)}…
@@ -1118,13 +1133,13 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Vibes AI: Enhance Prompt ── */}
         {node.type === 'vibes_generate_prompts' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Seed Prompt</label>
             <textarea
               placeholder="Describe your scene…"
               value={promptValue}
               onChange={e => { setPromptValue(e.target.value); updateNodeData(node.id, { prompt: e.target.value }); }}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
             />
             <label style={{ marginTop: '6px' }}>Batch Type</label>
             <select
@@ -1150,7 +1165,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Vibes AI: Generate Images ── */}
         {node.type === 'vibes_generate_images' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Prompt</label>
             <div className="prompt-wrapper" style={{ position: 'relative' }}>
               <textarea
@@ -1274,7 +1289,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Vibes AI: Generate Videos ── */}
         {node.type === 'vibes_generate_videos' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Prompt</label>
             <div className="prompt-wrapper" style={{ position: 'relative' }}>
               <textarea
@@ -1409,13 +1424,13 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Vibes AI: TTS ── */}
         {node.type === 'vibes_tts' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Text</label>
             <textarea
               placeholder="Text to speak…"
               value={promptValue}
               onChange={e => { setPromptValue(e.target.value); updateNodeData(node.id, { text: e.target.value, prompt: e.target.value }); }}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
             />
             <label style={{ marginTop: '6px' }}>Voice ID <span style={{ color: '#64748b', fontWeight: 'normal' }}>(optional)</span></label>
             <input
@@ -1423,7 +1438,7 @@ const Node = ({ node, transform, isSelected }) => {
               placeholder="Leave blank to auto-select"
               value={node.data.voiceId || ''}
               onChange={e => updateNodeData(node.id, { voiceId: e.target.value })}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
               style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
@@ -1431,7 +1446,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Vibes AI: Animate (Lip-sync) ── */}
         {node.type === 'vibes_animate' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Script / Prompt</label>
             <div className="prompt-wrapper" style={{ position: 'relative' }}>
               <textarea
@@ -1474,7 +1489,7 @@ const Node = ({ node, transform, isSelected }) => {
                     else if (e.key === 'Escape') { setShowSuggestions(false); }
                   }
                 }}
-                onMouseDown={e => e.stopPropagation()}
+                onMouseDown={stopPropagationUnlessPanning}
               />
               {showSuggestions && (
                 <div className="suggestions-dropdown" style={{
@@ -1563,7 +1578,7 @@ const Node = ({ node, transform, isSelected }) => {
               placeholder="https://cdn.vibes.ai/…"
               value={node.data.audioUrl || ''}
               onChange={e => updateNodeData(node.id, { audioUrl: e.target.value })}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
               style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
             />
             <label style={{ marginTop: '6px' }}>Audio Duration (ms)</label>
@@ -1571,14 +1586,14 @@ const Node = ({ node, transform, isSelected }) => {
               type="number" min="1000" step="500"
               value={node.data.audioDurationMs ?? 5000}
               onChange={e => updateNodeData(node.id, { audioDurationMs: Number(e.target.value) })}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={stopPropagationUnlessPanning}
               style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
             /> */}
           </div>
         )}
 
         {(resultUrl || (['meta_chat', 'universal_llm', 'http_request', 'json_extractor', 'text_transform'].includes(node.type) && node.data.text)) && node.type !== 'custom_node' && node.type !== 'add_image' && (
-          <div className="node-custom-ui result-view" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui result-view" onMouseDown={stopPropagationUnlessPanning}>
             {node.type === 'universal_llm' && node.data.text ? (
               <div style={{
                 padding: '12px',
@@ -1750,7 +1765,7 @@ const Node = ({ node, transform, isSelected }) => {
         )}
 
         {node.data.error && (
-          <div className="node-custom-ui error-view" onMouseDown={e => e.stopPropagation()} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
+          <div className="node-custom-ui error-view" onMouseDown={stopPropagationUnlessPanning} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
             <label style={{ color: '#991b1b', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>Execution Error</label>
             <span style={{ lineHeight: '1.4', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{node.data.error}</span>
           </div>
@@ -1758,7 +1773,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Condition Node (If/Else) ── */}
         {node.type === 'condition' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Condition</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div>
@@ -1807,7 +1822,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Delay Node ── */}
         {node.type === 'delay' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Delay (seconds)</label>
             <input
               type="number" min="0.1" step="0.5"
@@ -1821,7 +1836,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── HTTP Request Node ── */}
         {node.type === 'http_request' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <div style={{ flex: '0 0 90px' }}>
                 <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Method</label>
@@ -1864,7 +1879,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── JSON Extractor Node ── */}
         {node.type === 'json_extractor' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>JSON Path</label>
             <input
               type="text"
@@ -1879,7 +1894,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Text Transform Node ── */}
         {node.type === 'text_transform' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Operation</label>
             <select
               value={node.data.operation || 'template'}
@@ -1931,7 +1946,7 @@ const Node = ({ node, transform, isSelected }) => {
           <div
             className="node-custom-ui file-drop"
             style={{ cursor: 'pointer', position: 'relative' }}
-            onMouseDown={e => e.stopPropagation()}
+            onMouseDown={stopPropagationUnlessPanning}
             onClick={() => {
               const inp = document.createElement('input');
               inp.type = 'file'; inp.accept = 'image/*';
@@ -1974,7 +1989,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Image Resize Node ── */}
         {node.type === 'image_resize' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Aspect Ratio</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
               {['16:9', '9:16', '1:1', '4:3', '3:4', 'custom'].map(r => (
@@ -2027,7 +2042,7 @@ const Node = ({ node, transform, isSelected }) => {
 
         {/* ── Loop Node ── */}
         {node.type === 'loop_node' && (
-          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+          <div className="node-custom-ui" onMouseDown={stopPropagationUnlessPanning}>
             <label>Loop Configuration</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <div style={{ flex: 1 }}>
@@ -2165,7 +2180,7 @@ const Node = ({ node, transform, isSelected }) => {
               updateNodeData(node.id, { label: editLabelValue });
             }}
             autoFocus
-            onMouseDown={e => e.stopPropagation()}
+            onMouseDown={stopPropagationUnlessPanning}
             style={{
               flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid #38bdf8', borderRadius: '4px',
               color: '#fff', fontSize: '0.85rem', padding: '2px 4px', outline: 'none', width: '100%', minWidth: '80px'
@@ -2174,7 +2189,7 @@ const Node = ({ node, transform, isSelected }) => {
         ) : (
           <span
             className="node-label"
-            onMouseDown={(e) => e.stopPropagation()}
+            onMouseDown={stopPropagationUnlessPanning}
             onClick={(e) => {
               e.stopPropagation();
               setEditLabelValue(node.data.label);

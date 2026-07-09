@@ -90,6 +90,8 @@ const useWorkflowStore = create((set, get) => ({
   abortController: null,
   selectedNodeIds: [],
   customNodeLibrary: [],
+  isSpacePressed: false,
+  setIsSpacePressed: (isSpacePressed) => set({ isSpacePressed }),
 
   // Workflow management
   workflowId: null,

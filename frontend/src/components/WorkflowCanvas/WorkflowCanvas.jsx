@@ -76,8 +76,9 @@ const NODE_CATEGORIES = [
 ];
 
 const WorkflowCanvas = ({ onSave, onBack }) => {
-  const { nodes, edges, activeConnection, setActiveConnection, addNode, removeEdge, removeNodes, isRunning, runWorkflow, runStep, workflowId, workflowName, isDirty, isSaving, selectedNodeIds, setSelectedNodeIds, toggleNodeSelection, clearSelection, createCustomNodeFromSelection, customNodeLibrary } = useWorkflowStore();
+  const { nodes, edges, activeConnection, setActiveConnection, addNode, removeEdge, removeNodes, isRunning, runWorkflow, runStep, workflowId, workflowName, isDirty, isSaving, selectedNodeIds, setSelectedNodeIds, toggleNodeSelection, clearSelection, createCustomNodeFromSelection, customNodeLibrary, isSpacePressed, setIsSpacePressed } = useWorkflowStore();
   const canvasRef = useRef(null);
+  const lastMousePosRef = useRef({ x: 0, y: 0 });
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -87,7 +88,6 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [showCreateCustomNodeDialog, setShowCreateCustomNodeDialog] = useState(false);
   const [customNodeForm, setCustomNodeForm] = useState({ name: '', description: '', color: '#f59e0b' });
-  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -156,16 +156,40 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
 
   const onMouseDown = (e) => {
     if (contextMenu) setContextMenu(null);
-    const isCanvas = e.target.classList.contains('workflow-canvas') || e.target.id === 'canvas-grid' || e.target.classList.contains('canvas-content');
-    if (!isCanvas) return;
 
-    // Pan with Middle Mouse Button or Spacebar
+    // Pan with Middle Mouse Button or Spacebar — works regardless of what's
+    // under the cursor (node or empty canvas), matching Figma/Photoshop-style
+    // pan-mode behavior.
     if (e.button === 1 || isSpacePressed) {
+      e.preventDefault();
       if (selectedNodeIds.length > 0 && !e.shiftKey) clearSelection();
       setIsPanning(true);
-      setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+      const startX = e.clientX - transform.x;
+      const startY = e.clientY - transform.y;
+      setPanStart({ x: startX, y: startY });
+
+      // Use window-level listeners so panning keeps tracking the mouse even
+      // if the cursor moves outside the canvas div's bounds mid-drag
+      // (e.g. over the sidebar/toolbar), matching native middle-click pan behavior.
+      const onWindowMouseMove = (moveEvent) => {
+        setTransform((prev) => ({
+          ...prev,
+          x: moveEvent.clientX - startX,
+          y: moveEvent.clientY - startY,
+        }));
+      };
+      const onWindowMouseUp = () => {
+        setIsPanning(false);
+        window.removeEventListener('mousemove', onWindowMouseMove);
+        window.removeEventListener('mouseup', onWindowMouseUp);
+      };
+      window.addEventListener('mousemove', onWindowMouseMove);
+      window.addEventListener('mouseup', onWindowMouseUp);
       return;
     }
+
+    const isCanvas = e.target.classList.contains('workflow-canvas') || e.target.id === 'canvas-grid' || e.target.classList.contains('canvas-content');
+    if (!isCanvas) return;
 
     // Left click on background starts rectangle selection
     if (e.button === 0) {
@@ -212,7 +236,48 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
     setContextMenu(null);
   };
 
+  // Auto-pan the canvas when dragging a connection near the viewport edges,
+  // so the user can reach nodes that are currently off-screen.
+  useEffect(() => {
+    if (!activeConnection) return;
+
+    const EDGE_MARGIN = 60;
+    const MAX_PAN_SPEED = 16;
+    let rafId;
+
+    const step = () => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const state = useWorkflowStore.getState();
+      if (rect && state.activeConnection) {
+        const { x: mx, y: my } = lastMousePosRef.current;
+        let dx = 0, dy = 0;
+        if (mx - rect.left < EDGE_MARGIN) dx = MAX_PAN_SPEED * (1 - Math.max(0, mx - rect.left) / EDGE_MARGIN);
+        else if (rect.right - mx < EDGE_MARGIN) dx = -MAX_PAN_SPEED * (1 - Math.max(0, rect.right - mx) / EDGE_MARGIN);
+        if (my - rect.top < EDGE_MARGIN) dy = MAX_PAN_SPEED * (1 - Math.max(0, my - rect.top) / EDGE_MARGIN);
+        else if (rect.bottom - my < EDGE_MARGIN) dy = -MAX_PAN_SPEED * (1 - Math.max(0, rect.bottom - my) / EDGE_MARGIN);
+
+        if (dx !== 0 || dy !== 0) {
+          setTransform(prev => {
+            const next = { ...prev, x: prev.x + dx, y: prev.y + dy };
+            state.setActiveConnection({
+              ...state.activeConnection,
+              currentX: (mx - rect.left - next.x) / next.scale,
+              currentY: (my - rect.top - next.y) / next.scale,
+            });
+            return next;
+          });
+        }
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [!!activeConnection]);
+
   const onMouseMove = (e) => {
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+
     if (isSelecting && selectionRect) {
       const rect = canvasRef.current.getBoundingClientRect();
       const worldX = (e.clientX - rect.left - transform.x) / transform.scale;
@@ -227,13 +292,9 @@ const WorkflowCanvas = ({ onSave, onBack }) => {
         currentX: (e.clientX - rect.left - transform.x) / transform.scale,
         currentY: (e.clientY - rect.top - transform.y) / transform.scale,
       });
-    } else if (isPanning) {
-      setTransform((prev) => ({
-        ...prev,
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y,
-      }));
     }
+    // Panning is handled entirely by window-level listeners attached in
+    // onMouseDown (so it keeps tracking even outside the canvas bounds).
   };
 
   const onMouseUp = () => {
