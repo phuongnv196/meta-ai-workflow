@@ -118,6 +118,10 @@
       flex-shrink: 0;
     }
 
+    .node-label-edit {
+      pointer-events: all;
+    }
+
     .node-label {
       font-size: 0.85rem;
       font-weight: 600;
@@ -127,6 +131,8 @@
       overflow: hidden;
       text-overflow: ellipsis;
       min-width: 0; // Bắt buộc phải có để flex child có thể cắt chữ
+      pointer-events: all;
+      cursor: text;
     }
 
     .node-actions {

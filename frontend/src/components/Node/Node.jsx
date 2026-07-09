@@ -6,7 +6,7 @@ import {
   Upload, Mic, Wand2, Layers, Clapperboard, Speaker, PersonStanding,
   PackagePlus, Package, Pencil, Ungroup,
   Brain, Globe, Braces, Type, Timer, Repeat, GitBranch,
-  Palette, Brush
+  Palette, Brush, Maximize2, ImagePlus
 } from 'lucide-react';
 import { REFERENCE_NODE_TYPES } from '../../constants';
 import { API_BASE_URL } from '../../config';
@@ -107,7 +107,7 @@ const Node = ({ node, transform, isSelected }) => {
   }, [node.id, node.dimensions?.width, node.dimensions?.height, updateNodeDimensions]);
 
   const onMouseDown = (e) => {
-    if (e.target.closest('.delete-btn') || e.target.closest('.port') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.result-view') || e.target.closest('.file-drop')) return;
+    if (e.target.closest('.delete-btn') || e.target.closest('.port') || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.result-view') || e.target.closest('.file-drop') || e.target.closest('.node-label')) return;
 
     setIsDragging(true);
     const startX = e.clientX / transform.scale - node.position.x;
@@ -231,6 +231,10 @@ const Node = ({ node, transform, isSelected }) => {
       case 'stitch_upload': return <Upload size={18} color="#ea4335" />;
       case 'stitch_generate': return <Palette size={18} color="#4285f4" />;
       case 'stitch_edit': return <Brush size={18} color="#34a853" />;
+      case 'gemini_upload_image': return <Upload size={18} color="#8b5cf6" />;
+      case 'gemini_image_gen': return <Wand2 size={18} color="#8b5cf6" />;
+      case 'add_image':    return <ImagePlus size={18} color="#10b981" />;
+      case 'image_resize': return <Maximize2 size={18} color="#f59e0b" />;
       case 'custom_node': return <Package size={18} color={node.data.color || '#f59e0b'} />;
       default: return <Settings size={18} color="#94a3b8" />;
     }
@@ -391,7 +395,7 @@ const Node = ({ node, transform, isSelected }) => {
 
     return (
       <>
-        {(node.type === 'text_input' || node.type === 'meta_chat' || node.type === 'meta_imagine' || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'universal_llm' || node.type === 'stitch_generate' || node.type === 'stitch_edit') && (
+        {(node.type === 'text_input' || node.type === 'meta_chat' || node.type === 'meta_imagine' || node.type === 'meta_video_gen' || node.type === 'meta_video' || node.type === 'universal_llm' || node.type === 'stitch_generate' || node.type === 'stitch_edit' || node.type === 'gemini_image_gen') && (
           <div className="node-custom-ui" style={{ position: 'relative' }}>
             <label>Prompt</label>
             <textarea
@@ -582,6 +586,39 @@ const Node = ({ node, transform, isSelected }) => {
                 <span style={{ fontSize: '0.6rem', color: '#64748b', marginLeft: 'auto' }}>
                   {node.data.modeFast ? 'Text-only, faster response' : 'Off'}
                 </span>
+              </div>
+            )}
+
+            {/* Gemini Image Gen: aspect ratio + image size */}
+            {node.type === 'gemini_image_gen' && (
+              <div onMouseDown={e => e.stopPropagation()} style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>Aspect Ratio</label>
+                  <select
+                    value={node.data.aspectRatio || '1:1'}
+                    onChange={e => updateNodeData(node.id, { aspectRatio: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
+                  >
+                    <option value="1:1">1:1</option>
+                    <option value="4:3">4:3</option>
+                    <option value="3:4">3:4</option>
+                    <option value="16:9">16:9</option>
+                    <option value="9:16">9:16</option>
+                    <option value="5:4">5:4</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>Resolution</label>
+                  <select
+                    value={node.data.imageSize || '1K'}
+                    onChange={e => updateNodeData(node.id, { imageSize: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none' }}
+                  >
+                    <option value="1K">1K</option>
+                    <option value="2K">2K</option>
+                    <option value="4K">4K</option>
+                  </select>
+                </div>
               </div>
             )}
 
@@ -947,6 +984,42 @@ const Node = ({ node, transform, isSelected }) => {
               <>
                 <Upload size={20} />
                 <span style={{ fontSize: '0.75rem' }}>Click to upload image to Stitch</span>
+                <span style={{ fontSize: '0.6rem', color: '#64748b' }}>(or connect upstream image node)</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Google Gemini: Upload Image ── */}
+        {node.type === 'gemini_upload_image' && (
+          <div
+            className="node-custom-ui file-drop"
+            style={{ cursor: 'pointer', position: 'relative' }}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={() => {
+              const inp = document.createElement('input');
+              inp.type = 'file'; inp.accept = 'image/*';
+              inp.onchange = (ev) => {
+                const f = ev.target.files[0]; if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const b64 = reader.result.split(',')[1];
+                  updateNodeData(node.id, { base64Data: b64, fileName: f.name, mimeType: f.type, previewUrl: reader.result });
+                };
+                reader.readAsDataURL(f);
+              };
+              inp.click();
+            }}
+          >
+            {node.data.previewUrl ? (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <img src={node.data.previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '300px', objectFit: 'cover' }} />
+                <span style={{ fontSize: '0.65rem', color: '#8b5cf6', wordBreak: 'break-all' }}>Attached: {node.data.fileName}</span>
+              </div>
+            ) : (
+              <>
+                <Upload size={20} />
+                <span style={{ fontSize: '0.75rem' }}>Click to upload image for Gemini</span>
                 <span style={{ fontSize: '0.6rem', color: '#64748b' }}>(or connect upstream image node)</span>
               </>
             )}
@@ -1504,7 +1577,7 @@ const Node = ({ node, transform, isSelected }) => {
           </div>
         )}
 
-        {(resultUrl || (['meta_chat', 'universal_llm', 'http_request', 'json_extractor', 'text_transform'].includes(node.type) && node.data.text)) && node.type !== 'custom_node' && (
+        {(resultUrl || (['meta_chat', 'universal_llm', 'http_request', 'json_extractor', 'text_transform'].includes(node.type) && node.data.text)) && node.type !== 'custom_node' && node.type !== 'add_image' && (
           <div className="node-custom-ui result-view" onMouseDown={e => e.stopPropagation()}>
             {node.type === 'universal_llm' && node.data.text ? (
               <div style={{
@@ -1679,7 +1752,7 @@ const Node = ({ node, transform, isSelected }) => {
         {node.data.error && (
           <div className="node-custom-ui error-view" onMouseDown={e => e.stopPropagation()} style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444', borderRadius: '6px', fontSize: '0.7rem', color: '#b91c1c', marginTop: '8px' }}>
             <label style={{ color: '#991b1b', fontWeight: 'bold', display: 'block', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.65rem' }}>Execution Error</label>
-            <span style={{ lineHeight: '1.4', display: 'block' }}>{node.data.error}</span>
+            <span style={{ lineHeight: '1.4', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{node.data.error}</span>
           </div>
         )}
 
@@ -1853,6 +1926,105 @@ const Node = ({ node, transform, isSelected }) => {
           </div>
         )}
 
+        {/* ── Add Image Node ── */}
+        {node.type === 'add_image' && (
+          <div
+            className="node-custom-ui file-drop"
+            style={{ cursor: 'pointer', position: 'relative' }}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={() => {
+              const inp = document.createElement('input');
+              inp.type = 'file'; inp.accept = 'image/*';
+              inp.onchange = (ev) => {
+                const f = ev.target.files[0]; if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const b64 = reader.result.split(',')[1];
+                  updateNodeData(node.id, { base64Data: b64, fileName: f.name, mimeType: f.type, previewUrl: reader.result });
+                };
+                reader.readAsDataURL(f);
+              };
+              inp.click();
+            }}
+          >
+            {node.data.previewUrl ? (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', position: 'relative' }}>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <img src={node.data.previewUrl} alt="Preview" style={{ width: '100%', borderRadius: '6px', maxHeight: '300px', objectFit: 'cover', display: 'block' }} />
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '6px', background: 'rgba(0,0,0,0)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.45)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0)'}
+                  >
+                    <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 'bold', opacity: 0, transition: 'opacity 0.15s', pointerEvents: 'none' }}
+                      ref={el => { if (el) { const p = el.parentElement; p.addEventListener('mouseenter', () => el.style.opacity='1'); p.addEventListener('mouseleave', () => el.style.opacity='0'); } }}
+                    >Click to change</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.65rem', color: '#10b981', wordBreak: 'break-all' }}>Loaded: {node.data.fileName}</span>
+              </div>
+            ) : (
+              <>
+                <ImagePlus size={20} />
+                <span style={{ fontSize: '0.75rem' }}>Click to load image</span>
+                <span style={{ fontSize: '0.6rem', color: '#64748b' }}>(stored as base64, no upload)</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Image Resize Node ── */}
+        {node.type === 'image_resize' && (
+          <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
+            <label>Aspect Ratio</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              {['16:9', '9:16', '1:1', '4:3', '3:4', 'custom'].map(r => (
+                <button
+                  key={r}
+                  onClick={() => updateNodeData(node.id, { ratio: r })}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: `1px solid ${(node.data.ratio || '16:9') === r ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                    background: (node.data.ratio || '16:9') === r ? 'rgba(245,158,11,0.15)' : 'rgba(0,0,0,0.2)',
+                    color: (node.data.ratio || '16:9') === r ? '#f59e0b' : '#94a3b8',
+                    fontSize: '0.7rem',
+                    fontWeight: (node.data.ratio || '16:9') === r ? 'bold' : 'normal',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {r === 'custom' ? 'Custom' : r}
+                </button>
+              ))}
+            </div>
+            {node.data.ratio === 'custom' && (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', marginBottom: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Width</label>
+                  <input
+                    type="number" min="1"
+                    value={node.data.customW || 16}
+                    onChange={e => updateNodeData(node.id, { customW: parseInt(e.target.value) || 1 })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <span style={{ color: '#94a3b8', paddingBottom: '8px', fontSize: '1rem' }}>:</span>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '2px' }}>Height</label>
+                  <input
+                    type="number" min="1"
+                    value={node.data.customH || 9}
+                    onChange={e => updateNodeData(node.id, { customH: parseInt(e.target.value) || 1 })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            )}
+            <span style={{ fontSize: '0.6rem', color: '#94a3b8', display: 'block', lineHeight: '1.3' }}>
+              Scales image to fit the selected ratio, padding remaining space with white. No cropping — full image is preserved.
+            </span>
+          </div>
+        )}
+
         {/* ── Loop Node ── */}
         {node.type === 'loop_node' && (
           <div className="node-custom-ui" onMouseDown={e => e.stopPropagation()}>
@@ -2002,12 +2174,13 @@ const Node = ({ node, transform, isSelected }) => {
         ) : (
           <span
             className="node-label"
-            onDoubleClick={(e) => {
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
               e.stopPropagation();
               setEditLabelValue(node.data.label);
               setIsEditingLabel(true);
             }}
-            title="Double click to rename"
+            title="Click to rename"
             style={{ cursor: 'text' }}
           >
             {node.data.label}

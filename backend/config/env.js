@@ -30,10 +30,13 @@ const config = {
   metaCookie: process.env.META_COOKIE,
 
   stitchApiKey: process.env.STITCH_API_KEY || '',
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.1-flash-image',
 
   get baseUrl() {
     return `http://${this.host}:${this.port}`;
   },
+  stitchCookie: process.env.STITCH_COOKIE || '',
 };
 
 module.exports = config;

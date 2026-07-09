@@ -33,7 +33,9 @@ import {
   ChevronDown,
   ChevronRight,
   Palette,
-  Brush
+  Brush,
+  Maximize2,
+  ImagePlus
 } from 'lucide-react';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import './Sidebar.scss';
@@ -84,12 +86,14 @@ const Sidebar = () => {
         { type: 'extract_frame', icon: <Crop size={18} />, label: 'Extract Frame', color: '#06b6d4' },
         { type: 'merge_videos', icon: <Film size={18} />, label: 'Merge Videos', color: '#84cc16' },
         { type: 'add_audio', icon: <Music size={18} />, label: 'Add Audio to Video', color: '#ec4899' },
+        { type: 'image_resize', icon: <Maximize2 size={18} />, label: 'Image Resize (Ratio)', color: '#f59e0b' },
       ]
     },
     {
       name: 'Inputs & Data',
       items: [
         { type: 'text_input', icon: <FileText size={18} />, label: 'Text Prompt', color: '#818cf8' },
+        { type: 'add_image',  icon: <ImagePlus size={18} />, label: 'Add Image', color: '#10b981' },
       ]
     },
     {
@@ -123,6 +127,13 @@ const Sidebar = () => {
         { type: 'stitch_upload',   icon: <Upload size={18} />,  label: 'Stitch Upload',   color: '#ea4335' },
         { type: 'stitch_generate', icon: <Palette size={18} />, label: 'Stitch Generate', color: '#4285f4' },
         { type: 'stitch_edit',     icon: <Brush size={18} />,   label: 'Stitch Edit',     color: '#34a853' },
+      ]
+    },
+    {
+      name: 'Google Gemini',
+      items: [
+        { type: 'gemini_upload_image', icon: <Upload size={18} />, label: 'Gemini Upload Image', color: '#8b5cf6' },
+        { type: 'gemini_image_gen', icon: <Wand2 size={18} />, label: 'Gemini Image Gen', color: '#8b5cf6' },
       ]
     },
     {

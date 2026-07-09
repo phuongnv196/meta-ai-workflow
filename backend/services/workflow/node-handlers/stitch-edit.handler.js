@@ -3,19 +3,29 @@
 const { downloadFile } = require('../../meta_ai/uploader');
 const { uploadImage, editScreens, downloadToBase64 } = require('../../google-stitch/client');
 const { createTempPath, cleanupFiles, ensureTempDir } = require('../../temp-file.service');
+const { resolveReferencePlaceholders } = require('../prompt-template');
 
 async function handle(node, inputs, context) {
-  const { log } = context;
+  const { log, globalRefMap, results } = context;
 
   const nodePrompt = (node.data.prompt || '').trim();
   const inputPrompt = (inputs.find(i => i.promptText)?.promptText || inputs.find(i => i.text)?.text || '').trim();
-  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Edit this design';
+  let prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Edit this design';
+
+  // Replace {{reference_xx}} placeholders with real Stitch screen ids
+  const { prompt: resolvedPrompt, replacements } = resolveReferencePlaceholders(prompt, {
+    globalRefMap, results, platform: 'stitch',
+  });
+  prompt = resolvedPrompt;
+  if (replacements.length) {
+    log(`  Resolved ${replacements.length} reference placeholder(s): ${replacements.map(r => `{{${r.name}}}→${r.value}`).join(', ')}`);
+  }
 
   const deviceType = node.data.deviceType || 'DESKTOP';
 
   // 1. Collect existing screenIds from upstream Stitch nodes (skip re-upload)
   const existingScreenIds = [];
-  let existingProjectId = null;
+  let existingProjectId = context.stitchProjectId || null;
 
   // 2. Collect image URLs from non-Stitch upstream nodes (need download + upload)
   const imageUrls = [];
@@ -61,7 +71,7 @@ async function handle(node, inputs, context) {
       await downloadFile(imageUrls[i], tempPath);
 
       log(`  Uploading image ${i + 1} to Stitch...`);
-      const uploaded = await uploadImage(tempPath);
+      const uploaded = await uploadImage(tempPath, existingProjectId);
       screenIds.push(uploaded.screenId);
       if (!projectId) projectId = uploaded.projectId;
       log(`  Uploaded → screenId=${uploaded.screenId}`);

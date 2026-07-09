@@ -8,7 +8,7 @@ async function handle(node, inputs, context) {
 
   const nodePrompt = (node.data.prompt || '').trim();
   const inputPrompt = (inputs.find(i => i.promptText)?.promptText || inputs.find(i => i.text)?.text || '').trim();
-  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'A beautiful image';
+  let prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'A beautiful image';
 
   const count = Number(node.data.count) || 2;
   const projectId = node.data.projectId || sharedProjectId;
@@ -24,6 +24,7 @@ async function handle(node, inputs, context) {
   })();
 
   if (mediaEntId) {
+    prompt += `\n\n[CRITICAL DIRECTIVE]: If the reference image contains solid white/blank padding bars (added to extend the canvas), you MUST outpaint and naturally extend the real scene/background into those padding areas so the final image is fully filled edge-to-edge.`;
     log(`  Vibes generateImageEdit: prompt="${prompt.slice(0, 60)}" sourceImageEntId=${mediaEntId}`);
 
     const payload = {
@@ -57,6 +58,10 @@ async function handle(node, inputs, context) {
 
   // Step 1: create batch record
   const batchId = `batch-${Date.now()}`;
+  
+  if (mediaEntId) {
+    prompt += `\n\n[CRITICAL DIRECTIVE]: If the reference image contains solid white/blank padding bars (added to extend the canvas), you MUST outpaint and naturally extend the real scene/background into those padding areas so the final image is fully filled edge-to-edge.`;
+  }
   log(`  Vibes generateImages: prompt="${prompt.slice(0, 60)}" count=${count} mediaEntId=${mediaEntId || 'none'} batchId=${batchId}`);
 
   await vibeClient.generateBatches({

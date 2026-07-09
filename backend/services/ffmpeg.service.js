@@ -7,6 +7,23 @@ const { log } = require('../utils/logger');
  * Safe FFmpeg/FFprobe wrappers using execFileSync (array args, no shell injection).
  */
 
+function getVideoResolution(videoPath) {
+  try {
+    const output = execFileSync('ffprobe', [
+      '-v', 'error',
+      '-select_streams', 'v:0',
+      '-show_entries', 'stream=width,height',
+      '-of', 'csv=s=x:p=0',
+      videoPath,
+    ], { encoding: 'utf-8', timeout: 30000 });
+    const parts = output.trim().split('x').map(Number);
+    return { width: parts[0] || 0, height: parts[1] || 0 };
+  } catch (err) {
+    log(`FFprobe resolution detection failed: ${err.message}`);
+    return null;
+  }
+}
+
 function getVideoDuration(videoUrl) {
   try {
     const output = execFileSync('ffprobe', [
@@ -74,12 +91,15 @@ function concatVideos(concatFilePath, outputPath) {
     '-f', 'concat',
     '-safe', '0',
     '-i', concatFilePath,
-    '-c:v', 'copy',
+    '-c:v', 'libx264',
+    '-preset', 'fast',
+    '-crf', '23',
+    '-pix_fmt', 'yuv420p',
     '-c:a', 'aac',
     '-ac', '2',
     '-ar', '44100',
     outputPath,
-  ], { timeout: 120000 });
+  ], { timeout: 300000 });
 }
 
 /**
@@ -111,9 +131,21 @@ function concatVideosWithTransition(inputFiles, outputPath, transition, duration
   const n = inputFiles.length;
   const filterParts = [];
 
-  // First, label each input stream
-  // xfade chain: [0][1] -> [v01], [v01][2] -> [v012], etc.
-  let prevVideoLabel = '[0:v]';
+  // Normalize all inputs to the first video's resolution so xfade doesn't fail on size mismatch
+  const baseRes = getVideoResolution(inputFiles[0]);
+  const targetW = baseRes ? baseRes.width : 0;
+  const targetH = baseRes ? baseRes.height : 0;
+
+  for (let i = 0; i < n; i++) {
+    if (targetW && targetH) {
+      filterParts.push(`[${i}:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=disable,setsar=1[vs${i}]`);
+    } else {
+      filterParts.push(`[${i}:v]setsar=1[vs${i}]`);
+    }
+  }
+
+  // xfade chain over the scaled streams
+  let prevVideoLabel = '[vs0]';
   let prevAudioLabel = '[0:a]';
   let offset = durations[0] - duration;
 
@@ -122,7 +154,7 @@ function concatVideosWithTransition(inputFiles, outputPath, transition, duration
     const outA = i < n - 1 ? `[a${i}]` : '[aout]';
 
     filterParts.push(
-      `${prevVideoLabel}[${i}:v]xfade=transition=${transition}:duration=${duration}:offset=${Math.max(0, offset)}${outV}`
+      `${prevVideoLabel}[vs${i}]xfade=transition=${transition}:duration=${duration}:offset=${Math.max(0, offset)}${outV}`
     );
     filterParts.push(
       `${prevAudioLabel}[${i}:a]acrossfade=d=${duration}${outA}`
@@ -144,6 +176,7 @@ function concatVideosWithTransition(inputFiles, outputPath, transition, duration
     '-c:v', 'libx264',
     '-preset', 'fast',
     '-crf', '23',
+    '-pix_fmt', 'yuv420p',
     '-c:a', 'aac',
     '-ac', '2',
     '-ar', '44100',

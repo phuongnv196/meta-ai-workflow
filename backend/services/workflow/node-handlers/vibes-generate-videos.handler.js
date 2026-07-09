@@ -8,7 +8,7 @@ async function handle(node, inputs, context) {
 
   const nodePrompt = (node.data.prompt || '').trim();
   const inputPrompt = (inputs.find(i => i.promptText)?.promptText || inputs.find(i => i.text)?.text || '').trim();
-  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'A cinematic video';
+  let prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'A cinematic video';
 
   const videoModel = node.data.videoModel || 'midjen-short';
   const config     = { videoModel, ...(node.data.config || {}) };
@@ -37,6 +37,9 @@ async function handle(node, inputs, context) {
 
   // Step 1: create video batch record
   const batchId = `batch-${Date.now()}`;
+  if (startFrameId || endFrameId) {
+    prompt += `\n\n[CRITICAL DIRECTIVE]: If the reference image contains solid white/blank padding bars (added to extend the canvas), you MUST outpaint and naturally extend the real scene/background into those padding areas so the final video is fully filled edge-to-edge without white borders.`;
+  }
   log(`  Vibes generateVideos: prompt="${prompt.slice(0, 60)}" model=${videoModel} startFrame=${startFrameId || 'none'} endFrame=${endFrameId || 'none'} batchId=${batchId}`);
 
   const batchConfig = {

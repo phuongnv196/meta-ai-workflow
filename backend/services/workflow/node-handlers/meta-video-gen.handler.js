@@ -3,6 +3,7 @@
 const { uploadFile } = require('../../meta_ai');
 const { downloadFile } = require('../../meta_ai/uploader');
 const { createTempPath, cleanupFile } = require('../../temp-file.service');
+const { resolveReferencePlaceholders } = require('../prompt-template');
 
 async function handle(node, inputs, context) {
   const { client, incomingEdges, results, globalRefMap, log } = context;
@@ -10,6 +11,15 @@ async function handle(node, inputs, context) {
   const nodePrompt = (node.data.prompt || '').trim();
   const inputPrompt = (inputs.find(i => i.promptText)?.promptText || '').trim();
   let prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Generate a video';
+
+  // Replace {{reference_xx}} placeholders with real Meta media ids
+  const { prompt: resolvedPrompt, replacements } = resolveReferencePlaceholders(prompt, {
+    globalRefMap, results, platform: 'meta',
+  });
+  prompt = resolvedPrompt;
+  if (replacements.length) {
+    log(`  Resolved ${replacements.length} reference placeholder(s): ${replacements.map(r => `{{${r.name}}}→${r.value}`).join(', ')}`);
+  }
 
   let attachments = [];
 
@@ -51,6 +61,8 @@ async function handle(node, inputs, context) {
     if (!prompt.toLowerCase().includes('animate') && !prompt.toLowerCase().includes('video')) {
       prompt = `animate this image: ${prompt}`;
     }
+    // Instruction to outpaint white borders if padded image is used
+    prompt += `\n\n[CRITICAL DIRECTIVE]: If the reference image contains solid white/blank padding bars (added to extend the canvas), you MUST outpaint and naturally extend the real scene/background into those padding areas so the final video is fully filled edge-to-edge without white borders.`;
   } else {
     if (!prompt.toLowerCase().includes('video') && !prompt.toLowerCase().includes('animate')) {
       prompt = `generate a video of ${prompt}`;

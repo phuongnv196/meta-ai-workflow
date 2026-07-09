@@ -1,13 +1,23 @@
 'use strict';
 
 const { resolveAttachmentsFromEdges } = require('../attachment-resolver');
+const { resolveReferencePlaceholders } = require('../prompt-template');
 
 async function handle(node, inputs, context) {
   const { client, incomingEdges, results, globalRefMap } = context;
 
   const nodePrompt = (node.data.prompt || '').trim();
   const inputPrompt = (inputs.find(i => i.promptText)?.promptText || '').trim();
-  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Hello';
+  let prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Hello';
+
+  // Replace {{reference_xx}} placeholders with real Meta media ids
+  const { prompt: resolvedPrompt, replacements } = resolveReferencePlaceholders(prompt, {
+    globalRefMap, results, platform: 'meta',
+  });
+  prompt = resolvedPrompt;
+  if (replacements.length) {
+    context.log(`  Resolved ${replacements.length} reference placeholder(s): ${replacements.map(r => `{{${r.name}}}→${r.value}`).join(', ')}`);
+  }
 
   const modeFast = !!node.data.modeFast;
 

@@ -2,6 +2,7 @@
 
 const { MetaAIClient } = require('../meta_ai');
 const VibeAI = require('../vibe_ai/client');
+const { createFreshProject, deleteProject } = require('../google-stitch/client');
 const { topologicalSort } = require('./topological-sort');
 const { getHandler } = require('./node-handlers');
 const { log } = require('../../utils/logger');
@@ -26,6 +27,9 @@ const REFERENCE_NODE_TYPES = [
   'stitch_upload',
   'stitch_generate',
   'stitch_edit',
+  // Google Gemini nodes
+  'gemini_upload_image',
+  'gemini_image_gen',
 ];
 
 /**
@@ -155,6 +159,32 @@ async function executeWorkflow({ nodes, edges, targetNodeId, signal }, sendEvent
     }
   }
 
+  // Create a fresh Stitch project for this run so screens don't pollute previous runs
+  let stitchProjectId = null;
+  const STITCH_NODE_TYPES = ['stitch_upload', 'stitch_generate', 'stitch_edit'];
+  // Recursively scan into custom_node sub-graphs since Stitch nodes are often
+  // nested there (e.g. "Generate Video Mobile" custom nodes) rather than top-level.
+  function containsStitchNode(nodeList) {
+    return nodeList.some(n => {
+      if (STITCH_NODE_TYPES.includes(n.type)) return true;
+      if (n.type === 'custom_node' && Array.isArray(n.data?.subNodes)) {
+        return containsStitchNode(n.data.subNodes);
+      }
+      return false;
+    });
+  }
+  const hasStitchNode = containsStitchNode(nodes);
+  if (hasStitchNode && (!signal || !signal.aborted)) {
+    try {
+      const title = `Workflow ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+      const project = await createFreshProject(title);
+      stitchProjectId = project.id;
+      log(`Created fresh Stitch project: ${stitchProjectId} ("${title}")`);
+    } catch (e) {
+      log(`Warning: could not create Stitch project: ${e.message}`);
+    }
+  }
+
   // Promise graph to hold execution state of each node
   const executionPromises = {};
 
@@ -216,6 +246,7 @@ async function executeWorkflow({ nodes, edges, targetNodeId, signal }, sendEvent
         results,
         globalRefMap,
         projectId: sharedProjectId,
+        stitchProjectId,
         log,
       };
 
@@ -286,14 +317,33 @@ async function executeWorkflow({ nodes, edges, targetNodeId, signal }, sendEvent
     })();
   }
 
-  // Wait for all nodes in the execution order to finish
+  // Wait for ALL node promises to fully settle (success or failure) before
+  // proceeding to cleanup. Using Promise.all here would resolve/reject as soon
+  // as the FIRST node fails, while sibling node promises keep running orphaned
+  // in the background — cleanup (deleteProject) would then run while those
+  // orphaned branches are still mid-flight, causing 404 "entity not found"
+  // errors when they try to use the already-deleted project.
   try {
-    await Promise.all(Object.values(executionPromises));
+    const settled = await Promise.allSettled(Object.values(executionPromises));
+    const failure = settled.find(s => s.status === 'rejected');
+    if (failure) {
+      throw failure.reason;
+    }
     log('Workflow execution completed successfully.');
     sendEvent('workflow_completed', { results });
   } catch (error) {
     log(`Workflow execution failed: ${error.message}`);
     sendEvent('workflow_failed', { error: error.message });
+  } finally {
+    // Clean up temporary Stitch project if one was created
+    if (stitchProjectId) {
+      try {
+        log(`Cleaning up temporary Stitch project: ${stitchProjectId}`);
+        await deleteProject(stitchProjectId);
+      } catch (err) {
+        log(`Warning: Failed to delete temporary Stitch project ${stitchProjectId}: ${err.message}`);
+      }
+    }
   }
 
   return results;

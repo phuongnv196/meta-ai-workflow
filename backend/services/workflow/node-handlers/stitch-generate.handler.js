@@ -4,19 +4,29 @@ const fs = require('fs');
 const { downloadFile } = require('../../meta_ai/uploader');
 const { generateFromText, uploadImage, editScreens, downloadToBase64 } = require('../../google-stitch/client');
 const { createTempPath, cleanupFiles, ensureTempDir } = require('../../temp-file.service');
+const { resolveReferencePlaceholders } = require('../prompt-template');
 
 async function handle(node, inputs, context) {
-  const { log } = context;
+  const { log, globalRefMap, results } = context;
 
   const nodePrompt = (node.data.prompt || '').trim();
   const inputPrompt = (inputs.find(i => i.promptText)?.promptText || inputs.find(i => i.text)?.text || '').trim();
-  const prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Generate a modern UI screen';
+  let prompt = [nodePrompt, inputPrompt].filter(Boolean).join('\n\n') || 'Generate a modern UI screen';
+
+  // Replace {{reference_xx}} placeholders with real Stitch screen ids
+  const { prompt: resolvedPrompt, replacements } = resolveReferencePlaceholders(prompt, {
+    globalRefMap, results, platform: 'stitch',
+  });
+  prompt = resolvedPrompt;
+  if (replacements.length) {
+    log(`  Resolved ${replacements.length} reference placeholder(s): ${replacements.map(r => `{{${r.name}}}→${r.value}`).join(', ')}`);
+  }
 
   const deviceType = node.data.deviceType || 'DESKTOP';
 
   // Collect reference images from upstream nodes
   const stitchScreenIds = [];
-  let stitchProjectId = null;
+  let stitchProjectId = context.stitchProjectId || null;
   const nonStitchInputs = []; // { url?, base64? }
 
   for (const inp of inputs) {
@@ -66,7 +76,7 @@ async function handle(node, inputs, context) {
         }
 
         log(`  Uploading reference ${i + 1} to Stitch...`);
-        const uploaded = await uploadImage(tempPath);
+        const uploaded = await uploadImage(tempPath, stitchProjectId);
         screenIds.push(uploaded.screenId);
         if (!projectId) projectId = uploaded.projectId;
         log(`  Uploaded → screenId=${uploaded.screenId}`);
@@ -81,7 +91,7 @@ async function handle(node, inputs, context) {
   } else {
     // --- Text-only mode: generate from prompt ---
     try {
-      result = await generateFromText(prompt, deviceType);
+      result = await generateFromText(prompt, deviceType, stitchProjectId);
     } catch (err) {
       log(`  Stitch Generate error: ${err.message}`);
       throw err;

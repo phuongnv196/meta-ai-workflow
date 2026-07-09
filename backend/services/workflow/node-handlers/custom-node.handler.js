@@ -17,12 +17,14 @@ const SUB_REFERENCE_NODE_TYPES = [
   'file_input', 'meta_imagine', 'meta_video_gen', 'meta_video', 'meta_track',
   'extract_frame', 'merge_videos', 'vibes_upload_image', 'vibes_upload_audio',
   'vibes_generate_images', 'vibes_generate_videos', 'vibes_tts', 'vibes_animate',
+  'add_image', 'image_resize',
 ];
 
 // Node types that act as placeholders (they ignore incoming edges).
 // When exposed as inputs, they MUST be overridden.
 const PLACEHOLDER_NODE_TYPES = [
-  'text_input', 'file_input', 'vibes_upload_image', 'vibes_upload_audio', 'stitch_upload'
+  'text_input', 'file_input', 'vibes_upload_image', 'vibes_upload_audio', 'stitch_upload',
+  'add_image', 'image_resize',
 ];
 
 async function handle(node, inputs, context) {
@@ -168,6 +170,7 @@ async function handle(node, inputs, context) {
       results: subResults,
       globalRefMap: subRefMap,   // ← use sub-graph ref map, NOT the main workflow's
       projectId: context.projectId,
+      stitchProjectId: context.stitchProjectId,
       log: (msg) => context.log(`[CustomNode:${label}] ${msg}`),
     };
 

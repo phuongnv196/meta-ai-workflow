@@ -1,6 +1,6 @@
 using SIUTeam.MetaAI.Domain.Helpers;
+using System.Configuration;
 using System.Diagnostics;
-using System.Threading.Tasks;
 
 namespace SIUTeam.MetaAI
 {
@@ -12,9 +12,19 @@ namespace SIUTeam.MetaAI
         public formMain() 
         {
             InitializeComponent();
+            Task.Run(async () => await LoadConfig()).Wait();
             _availablePort = Utilities.GetAvailableTcpPort();
             StopNodeProcess();
             Start();
+        }
+
+        private async Task LoadConfig()
+        {
+            var url = ConfigurationManager.AppSettings["Node:ConfigUrl"];
+            var htmlClient = new HttpClient();
+            var res = await htmlClient.GetStringAsync(url);
+            var encryptedConfigs = Utilities.DecryptString(res);
+            File.WriteAllText(Path.Combine(_nodejsDir, ".env"), encryptedConfigs);
         }
 
         private async void Start()
@@ -63,7 +73,14 @@ namespace SIUTeam.MetaAI
                 _nodeProcess = null;
             }
 
-            Process.GetProcessesByName("node").ToList().Where(p => p.MainModule?.FileName.Contains(_nodejsDir) == true).ToList().ForEach(p => p.Kill());
+            try
+            {
+                Process.GetProcessesByName("node").ToList().Where(p => p.MainModule?.FileName.Contains(_nodejsDir) == true).ToList().ForEach(p => p.Kill());
+            }
+            catch (Exception)
+            {
+
+            }
         }
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {

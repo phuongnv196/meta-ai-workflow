@@ -19,3 +19,4 @@ net-client/SIUTeam.MetaAI/nodejs/*.js
 net-client/SIUTeam.MetaAI/nodejs/*.json
 net-client/SIUTeam.MetaAI/nodejs/*.log
 net-client/SIUTeam.MetaAI/nodejs/*.bin
+net-client/SIUTeam.MetaAI/App.config

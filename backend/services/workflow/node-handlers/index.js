@@ -39,6 +39,12 @@ const handlers = {
   stitch_upload:           require('./stitch-upload.handler'),
   stitch_generate:         require('./stitch-generate.handler'),
   stitch_edit:             require('./stitch-edit.handler'),
+  // Gemini AI Nodes
+  gemini_upload_image:     require('./gemini-upload-image.handler'),
+  gemini_image_gen:        require('./gemini-image-gen.handler'),
+  // Image utilities
+  add_image:               require('./add-image.handler'),
+  image_resize:            require('./image-resize.handler'),
 };
 
 function getHandler(nodeType) {

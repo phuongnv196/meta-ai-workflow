@@ -18,4 +18,7 @@ export const REFERENCE_NODE_TYPES = [
   'stitch_upload',
   'stitch_generate',
   'stitch_edit',
+  // Image utilities
+  'add_image',
+  'image_resize',
 ];
